@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: python-project-template
+Version: 0.1.0
+Summary: A reusable Python project template
+Author: Your Name
+Requires-Python: >=3.8
