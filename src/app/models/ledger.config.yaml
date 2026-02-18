@@ -1,0 +1,49 @@
+version: 1.1.0
+project_root: D:\OneDrive - 슈어소프트테크\SHN12\10.ESF-CCS
+
+project_doc_info:
+  path: 0.프로젝트관리\SHN12 ESF-CCS 종합관리 (신한울12).xlsx
+  sheet_name: "두산문서목록"
+  column_title_doc_no: "문서번호"
+  column_title_abbr: "문서구분"
+
+workbook:
+  path: 2.취득_공급\관리대장.xlsx
+roots:
+  source_root: D:\OneDrive - 슈어소프트테크\PROJECT\0.inbox\SHN12ESF
+  phase_folders:
+    Acquisition / Support: 2.취득_공급\0.취득공급단계 입력물
+    Concept: 3A.개념단계\3A.개념단계입력물
+    Requirements: 3B.요건단계\3B.요건단계입력물
+    Design: 3C.설계단계\3C.설계단계입력물
+    Implementation: 3D.구현단계\3D.구현단계입력물
+    Test: 3E.시험단계
+    Installation & Checkout: 3F.설치단계
+    Cross-Phase: 3M.단계공통
+rule:
+  full_name_min_ratio: 0.5
+ai:
+  confidence_threshold: 0.8
+fallback:
+  enabled: true
+duplicate:
+  suffix_start: 1
+ledgers:
+  submission:
+    sheet_name: 제출물 관리대장
+    columns:
+    - name: 제출물명
+      ai_attribute: null
+    - name: 제출물 형태
+      ai_attribute: null
+    - name: 접수일
+      ai_attribute: null
+    system_columns:
+    - phase
+    - artifact_abbr
+    - classification_method
+    - ai_confidence
+    - result_path
+    - status
+    - error_message
+    - processed_at

@@ -1,0 +1,279 @@
+{
+  "phases": [
+    {
+      "phase": "Acquisition / Support",
+      "artifacts": [
+        {
+          "abbr": "DS",
+          "full_name": "Design Specification / User Requirements Document / Technical Specification",
+          "description": "사용자 요구사항이 담긴 문서",
+          "note": "상위 기관 산출물"
+        },
+        {
+          "abbr": "SPM",
+          "full_name": "Software Program Manual",
+          "description": "발전소 단위의 전체 프로젝트 계획을 지정하는 문서",
+          "note": "상위 기관 산출물"
+        },
+        {
+          "abbr": "DDR",
+          "full_name": "Display Design Report",
+          "description": "디스플레이를 정의하는 문서",
+          "note": "상위 기관 산출물"
+        },
+        {
+          "abbr": "IR",
+          "full_name": "Interface Requirement",
+          "description": "계통 인터페이스를 정의하는 문서",
+          "note": "상위 기관 산출물"
+        }
+      ]
+    },
+    {
+      "phase": "Concept",
+      "artifacts": [
+        {
+          "abbr": "SDP",
+          "full_name": "Software Development Plan",
+          "description": "개발 계획서"
+        },
+        {
+          "abbr": "SIntP",
+          "full_name": "Software Integration Plan",
+          "description": "통합 계획서"
+        },
+        {
+          "abbr": "SCMP",
+          "full_name": "Software Configuration Management Plan",
+          "description": "형상관리 계획서"
+        },
+        {
+          "abbr": "SMP",
+          "full_name": "Software Management Plan",
+          "description": "관리 계획서"
+        },
+        {
+          "abbr": "SVVP",
+          "full_name": "Software Verification and Validation Plan",
+          "description": "V&V 수행 계획서"
+        },
+        {
+          "abbr": "MTP",
+          "full_name": "Master Test Plan",
+          "description": "시험 수행 계획서",
+          "note": "STP와 약어 중복 방지"
+        },
+        {
+          "abbr": "SSP",
+          "full_name": "Software Safety Plan",
+          "description": "안전성 분석 수행 방법을 정의하는 문서"
+        },
+        {
+          "abbr": "SQAP",
+          "full_name": "Software Quality Assurance Plan",
+          "description": "품질보증 계획서"
+        },
+        {
+          "abbr": "PHAR",
+          "full_name": "Preliminary Hazard Analysis Report",
+          "description": "사용자 요구사항으로부터 Hazard를 식별하여 정리한 보고서"
+        },
+        {
+          "abbr": "CSIP",
+          "full_name": "Cyber Security Implementation Plan",
+          "description": "사이버 보안을 어떻게 수행할 것인지 정하는 계획서"
+        },
+        {
+          "abbr": "CVVR",
+          "full_name": "Concept Phase Verification and Validation Report",
+          "description": "개념 단계 계획서들을 검토하고 결과를 정리한 보고서"
+        }
+      ]
+    },
+    {
+      "phase": "Requirements",
+      "artifacts": [
+        {
+          "abbr": "SRS",
+          "full_name": "Software Requirements Specification",
+          "description": "사용자 요구사항 중 소프트웨어 요구사항을 식별·정리한 문서"
+        },
+        {
+          "abbr": "STN",
+          "full_name": "System Test Plan",
+          "description": "소프트웨어 중심의 시스템 시험 계획서"
+        },
+        {
+          "abbr": "RVVR",
+          "full_name": "Requirements Phase Software Verification and Validation Report",
+          "description": "요건 단계에서 수행한 검증 결과 요약 보고서"
+        },
+        {
+          "abbr": "RSAR",
+          "full_name": "Requirements Phase Software Safety Analysis Report",
+          "description": "SRS 기반 안전성 분석 결과 보고서",
+          "note": "HAZOP / FMEA 등"
+        },
+        {
+          "abbr": "RCMR",
+          "full_name": "Requirements Phase Software Configuration Management Report",
+          "description": "요건 단계 산출물 형상관리 보고서"
+        }
+      ]
+    },
+    {
+      "phase": "Design",
+      "artifacts": [
+        {
+          "abbr": "SDD",
+          "full_name": "Software Design Description",
+          "description": "소프트웨어를 상세 설계하여 구현 단계에서 참고하도록 기술한 문서"
+        },
+        {
+          "abbr": "CTN",
+          "full_name": "Component Test Plan",
+          "description": "소프트웨어 개발 단계 전반을 아우르는 기술 문서",
+          "note": "용어 재정의"
+        },
+        {
+          "abbr": "ITN",
+          "full_name": "Integration Test Plan",
+          "description": "검증 기준, 주체, 통제 시점을 정의하는 문서"
+        },
+        {
+          "abbr": "DVVR",
+          "full_name": "Design Phase Software Verification and Validation Report",
+          "description": "SDD에 대한 객관적 평가 및 시험 계획을 포함한 V&V 보고서"
+        },
+        {
+          "abbr": "DSAR",
+          "full_name": "Design Phase Software Safety Analysis Report",
+          "description": "설계 단계 소프트웨어 안전성 분석 보고서"
+        },
+        {
+          "abbr": "DCMR",
+          "full_name": "Design Phase Software Configuration Management Report",
+          "description": "설계 단계 산출물 형상관리 보고서"
+        }
+      ]
+    },
+    {
+      "phase": "Implementation",
+      "artifacts": [
+        {
+          "abbr": "SourceCode",
+          "full_name": "Source Code",
+          "description": "시스템 구축 과정에서 작성된 프로그램의 소스 파일"
+        },
+        {
+          "abbr": "CodeList",
+          "full_name": "Software Code List",
+          "description": "소스코드 구조 및 구현 내용을 정리한 코드 추적성 문서"
+        },
+        {
+          "abbr": "CTP",
+          "full_name": "Component Test Procedure",
+          "description": "구성 요소가 SDD에 따라 구현되었는지 확인하기 위한 시험 문서"
+        },
+        {
+          "abbr": "ITP",
+          "full_name": "Integration Test Procedure",
+          "description": "SRS 요구사항 기반 기능 시험 문서"
+        },
+        {
+          "abbr": "STP",
+          "full_name": "System Test Procedure",
+          "description": "시스템 구성 요소 구현 적합성 시험 문서"
+        },
+        {
+          "abbr": "CTR",
+          "full_name": "Component Test Report",
+          "description": "구성 요소 시험 활동 및 결과 요약 보고서"
+        },
+        {
+          "abbr": "IVVR",
+          "full_name": "Implementation Phase Software Verification and Validation Report",
+          "description": "구현 단계 V&V 결과 및 현재 상태 보고서"
+        },
+        {
+          "abbr": "ISAR",
+          "full_name": "Implementation Phase Software Safety Analysis Report",
+          "description": "구현 단계 Deviation 영향 분석 및 완화 방침 보고서"
+        },
+        {
+          "abbr": "ICMR",
+          "full_name": "Implementation Phase Software Configuration Management Report",
+          "description": "구현 단계 산출물 형상관리 보고서"
+        }
+      ]
+    },
+    {
+      "phase": "Test",
+      "artifacts": [
+        {
+          "abbr": "ITR",
+          "full_name": "Integration Test Report",
+          "description": "통합 테스트 결과 보고서"
+        },
+        {
+          "abbr": "STR",
+          "full_name": "System Test Report",
+          "description": "시스템 테스트 결과 보고서"
+        },
+        {
+          "abbr": "TVVR",
+          "full_name": "Test Phase Software Verification and Validation Report",
+          "description": "시험 단계 V&V 결과 및 현황 보고서"
+        },
+        {
+          "abbr": "TSAR",
+          "full_name": "Test Phase Software Safety Analysis Report",
+          "description": "시험 단계 안전성 분석 보고서"
+        },
+        {
+          "abbr": "SVVR",
+          "full_name": "Software Verification and Validation Report",
+          "description": "사용자 요구사항 충족 여부를 객관적 증거로 확인하는 V&V 문서",
+          "note": "≒ FVVR R0"
+        },
+        {
+          "abbr": "TCMR",
+          "full_name": "Test Phase Software Configuration Management Report",
+          "description": "시험 단계 산출물 형상관리 보고서"
+        }
+      ]
+    },
+    {
+      "phase": "Installation & Checkout",
+      "artifacts": [
+        {
+          "abbr": "FSAR",
+          "full_name": "Final Safety Analysis Report",
+          "description": "IEEE 603-1991에 정의된 최종 안전성 분석 보고서"
+        },
+        {
+          "abbr": "FCMR",
+          "full_name": "Final Configuration Management Report",
+          "description": "최종 산출물 형상관리 보고서"
+        },
+        {
+          "abbr": "FVVR",
+          "full_name": "Final Verification and Validation Report",
+          "description": "최종 Software V&V 결과 보고서",
+          "note": "단계 통합 가능"
+        }
+      ]
+    },
+    {
+      "phase": "Cross-Phase",
+      "artifacts": [
+        {
+          "abbr": "RTM",
+          "full_name": "Requirements Traceability Matrix",
+          "description": "요건 추적표를 포함한 추적성 분석 문서",
+          "note": "전 단계 공통"
+        }
+      ]
+    }
+  ]
+}

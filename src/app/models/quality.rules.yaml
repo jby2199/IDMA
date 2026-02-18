@@ -1,0 +1,30 @@
+version: "1.0.0"
+
+styles:
+  uncertain_fill: "YELLOW"
+
+thresholds:
+  default_ai_score_min: 80
+  per_attribute:
+    memo_number: 90
+    memo_title: 80
+    tr_number: 85
+    date_send: 80
+    date_receive: 80
+    file_name: 80
+
+rules:
+  - id: "periodic_scan_marks_dates_uncertain"
+    when:
+      event_source: ["periodic_scan"]
+    apply:
+      fill: "uncertain_fill"
+      columns: ["접수일", "업체 발송일"]
+
+  - id: "ai_low_score_marks_uncertain"
+    when:
+      source: "ai"
+      score_below_threshold: true
+    apply:
+      fill: "uncertain_fill"
+      columns_from_attribute_mapping: true

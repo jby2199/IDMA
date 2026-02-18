@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+src/app/__init__.py
+src/app/main.py
+src/app/adapters/__init__.py
+src/app/adapters/adapter_example.py
+src/app/core/__init__.py
+src/app/core/logic.py
+src/app/models/__init__.py
+src/app/models/model_example.py
+src/app/utils/__init__.py
+src/app/utils/helpers.py
+src/python_project_template.egg-info/PKG-INFO
+src/python_project_template.egg-info/SOURCES.txt
+src/python_project_template.egg-info/dependency_links.txt
+src/python_project_template.egg-info/top_level.txt
+tests/test_basic.py

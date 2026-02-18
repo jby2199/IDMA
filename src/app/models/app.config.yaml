@@ -1,0 +1,15 @@
+version: "1.0.0"
+
+watch:
+  # Prefer filesystem events when available.
+  use_fs_events: true
+
+  # periodic_scan interval (seconds). User-configurable.
+  scan_interval_seconds: 60
+
+  # Process a file only after it has stopped changing for this many seconds.
+  file_stable_seconds: 3
+
+performance:
+  # Target average CPU usage (best-effort).
+  cpu_target_percent: 5
