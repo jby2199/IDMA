@@ -22,8 +22,19 @@ from app.ui.settings_window import SettingsWindow
 
 # models 폴더 내 기본 파일 경로를 조합한다.
 def _default_model_path(name: str) -> Path:
-    """`src/app/models` 아래 기본 설정 파일의 절대 경로를 만든다."""
-    return Path(__file__).resolve().parent / "models" / name
+    """기본 설정 파일 경로를 실행 환경(개발/패키징)에 맞춰 찾는다."""
+    # PyInstaller onefile에서는 임시 풀림 경로(sys._MEIPASS)를 우선 사용한다.
+    bundle_root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    candidates = (
+        bundle_root / "models" / name,
+        bundle_root / "app" / "models" / name,
+        Path(__file__).resolve().parent / "models" / name,
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    # 후보가 모두 없으면 첫 번째 기본 경로를 반환해 호출부에서 명확한 에러를 내게 한다.
+    return candidates[0]
 
 
 class AppController:

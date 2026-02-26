@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
@@ -10,6 +11,16 @@ from tkinter import messagebox, ttk
 
 from app.adapters.config_loader import dump_runtime_config
 from app.models.config_schema import RuntimeConfig
+
+try:
+    import pystray
+    from PIL import Image, ImageDraw
+    _TRAY_IMPORT_ERROR: str | None = None
+except ImportError as exc:
+    pystray = None
+    Image = None
+    ImageDraw = None
+    _TRAY_IMPORT_ERROR = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
 
 
 class SettingsWindow:
@@ -39,6 +50,8 @@ class SettingsWindow:
         self._detail_columns = ("timestamp", "level", "event", "message")
         self._log_max_rows = 500
         self._resize_job: str | None = None
+        self._tray_icon = None
+        self._tray_thread: threading.Thread | None = None
 
         notebook = ttk.Notebook(self._root)
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
@@ -55,14 +68,19 @@ class SettingsWindow:
         ttk.Button(footer, text="감시 중지", command=self._stop).pack(side="left")
 
         self._root.bind("<Configure>", self._on_root_resize)
+        self._root.protocol("WM_DELETE_WINDOW", self._exit_program)
 
     # ???? ?(?? ??/?? ??/?? ??)? ????.
     def _build_dashboard_tab(self, notebook: ttk.Notebook) -> None:
         frame = ttk.Frame(notebook)
         notebook.add(frame, text="대시보드")
 
+        header = ttk.Frame(frame)
+        header.pack(fill="x", padx=8, pady=(8, 0))
+        ttk.Button(header, text="트레이로 최소화", command=self._minimize_to_tray).pack(side="right")
+
         status_box = ttk.LabelFrame(frame, text="감시 상태")
-        status_box.pack(fill="x", padx=8, pady=8)
+        status_box.pack(fill="x", padx=8, pady=(8, 8))
 
         ttk.Label(status_box, text="상태").grid(row=0, column=0, sticky="w", padx=8, pady=4)
         ttk.Label(status_box, textvariable=self._status_var).grid(row=0, column=1, sticky="w", padx=8, pady=4)
@@ -450,3 +468,83 @@ class SettingsWindow:
         self._on_stop()
         self._status_var.set("Stopped")
         messagebox.showinfo("상태", "감시 서비스 중지")
+
+    # 대시보드에서 메인 창을 숨기고 시스템 트레이 아이콘을 띄운다.
+    def _minimize_to_tray(self) -> None:
+        if pystray is None or Image is None or ImageDraw is None:
+            details = _TRAY_IMPORT_ERROR or "원인을 확인할 수 없는 ImportError가 발생했습니다."
+            messagebox.showerror(
+                "오류",
+                "트레이 기능 초기화에 실패했습니다.\n"
+                "pystray/Pillow 설치 또는 실행 환경 문제일 수 있습니다.\n\n"
+                f"원인: {details}",
+            )
+            return
+        if self._tray_icon is not None:
+            self._root.withdraw()
+            return
+
+        icon = pystray.Icon(
+            "submission_automation",
+            self._build_tray_image(),
+            "제출물 관리 자동화",
+            menu=pystray.Menu(
+                pystray.MenuItem("열기", self._on_tray_open, default=True),
+                pystray.MenuItem("프로그램 종료", self._on_tray_exit),
+            ),
+        )
+        self._tray_icon = icon
+        self._tray_thread = threading.Thread(target=icon.run, daemon=True, name="tray-icon")
+        self._tray_thread.start()
+        self._root.withdraw()
+
+    # 트레이 아이콘 그림을 코드로 생성한다.
+    def _build_tray_image(self):
+        image = Image.new("RGB", (64, 64), color="#1976d2")
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((12, 12, 52, 52), outline="white", width=4)
+        draw.line((20, 22, 32, 34), fill="white", width=4)
+        draw.line((32, 34, 46, 20), fill="white", width=4)
+        return image
+
+    # 트레이 기본 동작(더블클릭)으로 창을 다시 연다.
+    def _on_tray_open(self, _icon=None, _item=None) -> None:
+        self._root.after(0, self._restore_from_tray)
+
+    # 트레이 메뉴의 프로그램 종료를 처리한다.
+    def _on_tray_exit(self, _icon=None, _item=None) -> None:
+        self._root.after(0, self._exit_program)
+
+    # 트레이 모드에서 메인 창을 복원한다.
+    def _restore_from_tray(self) -> None:
+        self._stop_tray_icon()
+        self._root.deiconify()
+        self._root.lift()
+        try:
+            self._root.focus_force()
+        except Exception:
+            pass
+
+    # 트레이 아이콘 스레드를 안전하게 정리한다.
+    def _stop_tray_icon(self) -> None:
+        icon = self._tray_icon
+        self._tray_icon = None
+        if icon is not None:
+            try:
+                icon.stop()
+            except Exception:
+                pass
+
+        thread = self._tray_thread
+        self._tray_thread = None
+        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout=1)
+
+    # 앱 종료 시 감시와 트레이를 정리하고 창을 닫는다.
+    def _exit_program(self) -> None:
+        try:
+            self._on_stop()
+        except Exception:
+            pass
+        self._stop_tray_icon()
+        self._root.destroy()

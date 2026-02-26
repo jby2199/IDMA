@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=C:\Users\jby_mini\OneDrive\Documents\Suresofttech\dev\제출물관리자동화\.venv
+set VIRTUAL_ENV=C:\Users\jby_mini\Documents\Suresofttech\dev\inputDoc_manager\.venv
 
 if not defined PROMPT set PROMPT=$P$G
 
