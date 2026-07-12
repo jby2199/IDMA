@@ -1,2 +1,5 @@
-# temp-repository
-새 프로젝트 시작 시 리포지토리 기본 형태를 바로 만들기 위해 존재하는 템플릿.
+# IDMA
+입력 문서를 자동 식별분류하여 있어야 할 위치에 자동 배치한다.
+
+## full name
+input document management automation
