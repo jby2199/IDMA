@@ -1,3 +1,9 @@
 .venv
 *.exe
 *.zip
+
+# 게이트 실행 임시물 (tools/gate.ps1 --basetemp)
+.pytest-tmp/
+.tmp/
+__pycache__/
+.pytest_cache/
