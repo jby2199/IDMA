@@ -73,23 +73,36 @@ function Get-Ids($text, $pattern) {
     return @([regex]::Matches($text, $pattern) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 }
 
-# 정의 줄('[SRS-F001] 제목', 마크다운 헤더 '#' 접두 허용) 뒤 6줄 안에
-# 링크 줄(상위요건:/구현요건:)이 있는지
+# 정의 줄('[SRS-F001]'이 그 줄 어디에든 있으면 정의로 인정, 위치 제약 없음) 뒤 6줄 안에
+# 링크 줄(상위요건:/구현요건:)이 있는지.
+# 위치 제약을 없애면서 본문 서술 중의 '[ID]' 인용(아직 <ID> 로 전환 안 된 옛 참조 등)도
+# defPattern 에 걸려 정의 후보로 잡힐 수 있다. 그런 인용 occurrence 근처에서 스캔이
+# 조기 종료되면 그 뒤에 있는 진짜 정의+링크를 가려 오탐(false orphan)이 난다.
+# 그래서 판정을 줄 단위가 아니라 ID 단위로 바꾼다 - 같은 ID 의 모든 occurrence 를 모아
+# 그중 하나라도 6줄 이내에 링크가 있으면 그 ID 는 고아가 아니다.
 function Find-OrphanDefs($text, $defPattern, $linkKeyword) {
-    $orphans = @()
-    if (-not $text) { return $orphans }
+    if (-not $text) { return @() }
     $lines = $text -split "`r?`n"
+    $occurrencesById = @{}
     for ($i = 0; $i -lt $lines.Count; $i++) {
         if ($lines[$i] -match $defPattern) {
             $id = $Matches[1]
-            $found = $false
+            if (-not $occurrencesById.ContainsKey($id)) { $occurrencesById[$id] = @() }
+            $occurrencesById[$id] += $i
+        }
+    }
+    $orphans = @()
+    foreach ($id in $occurrencesById.Keys) {
+        $linked = $false
+        foreach ($i in $occurrencesById[$id]) {
             $stop = [Math]::Min($i + 6, $lines.Count - 1)
             for ($j = $i + 1; $j -le $stop; $j++) {
-                if ($lines[$j] -match [regex]::Escape($linkKeyword)) { $found = $true; break }
+                if ($lines[$j] -match [regex]::Escape($linkKeyword)) { $linked = $true; break }
                 if ($lines[$j] -match $defPattern) { break }
             }
-            if (-not $found) { $orphans += $id }
+            if ($linked) { break }
         }
+        if (-not $linked) { $orphans += $id }
     }
     return @($orphans | Sort-Object -Unique)
 }
@@ -353,14 +366,14 @@ if ($Stage -eq 'docs') {
     if ($srs -and $srsReq.Count -eq 0) { Fail 'SRS 에 [SRS-F###]/[SRS-N###] 요구사항 ID 없음' }
 
     # 고아 SRS 요구사항: 상위요건 링크 없음
-    $orphan = Find-OrphanDefs $srs '^#*\s*\[(SRS-[FN]\d{3})\]' '상위요건'
+    $orphan = Find-OrphanDefs $srs '\[(SRS-[FN]\d{3})\]' '상위요건'
     if ($orphan.Count -gt 0) { Fail ("상위요건 링크 없는 SRS 요구사항: " + ($orphan -join ', ')) }
 
     # 전개 안 된 PRD 요구사항
     if ($prd -and $srs) {
         $linked = @()
         foreach ($m in [regex]::Matches($srs, '상위요건\s*:\s*(.+)')) {
-            foreach ($id in [regex]::Matches($m.Groups[1].Value, '\[(PRD-[UAFN]\d{2,})\]')) {
+            foreach ($id in [regex]::Matches($m.Groups[1].Value, '<(PRD-[UAFN]\d{2,})>')) {
                 $linked += $id.Groups[1].Value
             }
         }
@@ -378,13 +391,13 @@ if ($Stage -eq 'docs') {
     $sddIds = Get-Ids $sdd '\[(SDD-[MIDC]\d{2,})\]'
     if ($sdd -and $sddIds.Count -eq 0) { Fail 'SDD 에 [SDD-M###]/[SDD-I###] 형식 ID 없음' }
 
-    $orphanSdd = Find-OrphanDefs $sdd '^#*\s*\[(SDD-[MIDC]\d{2,})\]' '구현요건'
+    $orphanSdd = Find-OrphanDefs $sdd '\[(SDD-[MIDC]\d{2,})\]' '구현요건'
     if ($orphanSdd.Count -gt 0) { Fail ("구현요건 링크 없는 SDD 항목: " + ($orphanSdd -join ', ')) }
 
     if ($srs -and $sdd) {
         $covered = @()
         foreach ($m in [regex]::Matches($sdd, '구현요건\s*:\s*(.+)')) {
-            foreach ($id in [regex]::Matches($m.Groups[1].Value, '\[(SRS-[FN]\d{3})\]')) {
+            foreach ($id in [regex]::Matches($m.Groups[1].Value, '<(SRS-[FN]\d{3})>')) {
                 $covered += $id.Groups[1].Value
             }
         }
@@ -412,13 +425,13 @@ if ($Stage -eq 'docs') {
         $sadIds = Get-Ids $sad '\[(SAD-[CIQR]\d{2,})\]'
         if ($sadIds.Count -eq 0) { Fail 'SAD 에 [SAD-C###]/[SAD-I###]/[SAD-Q###] 형식 ID 없음' }
 
-        $orphanSad = Find-OrphanDefs $sad '^#*\s*\[(SAD-[CIQR]\d{2,})\]' '구현요건'
+        $orphanSad = Find-OrphanDefs $sad '\[(SAD-[CIQR]\d{2,})\]' '구현요건'
         if ($orphanSad.Count -gt 0) { Fail ("구현요건 링크 없는 SAD 항목: " + ($orphanSad -join ', ')) }
 
         if ($srs) {
             $coveredSad = @()
             foreach ($m in [regex]::Matches($sad, '구현요건\s*:\s*(.+)')) {
-                foreach ($id in [regex]::Matches($m.Groups[1].Value, '\[(SRS-[FN]\d{3})\]')) {
+                foreach ($id in [regex]::Matches($m.Groups[1].Value, '<(SRS-[FN]\d{3})>')) {
                     $coveredSad += $id.Groups[1].Value
                 }
             }
