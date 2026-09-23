@@ -10,7 +10,7 @@ GATE.md 는 사람도 모델도 손으로 고치지 않는다. 판정은 이 스
 단계는 3개다:
   docs  요건+설계 (PRD/SRS/SDD/SAD/adr)   — 최상류
   impl  구현 (src/, tests/)
-  vv    사용자 실테스트 + 이슈 등록/조치 (issue/0.issue, 1.open, 2.todo, 3.done)
+  vv    사용자 실테스트 + 이슈 등록/조치 (issue/0.issue, 1.open, 2.todo, 3.done, 4.archive)
 
 검사 대상은 '실작업 파일'이다. 파일명에 '(template)' 또는 '.example.' 이 들어간 것은
 템플릿/예시로 간주해 제외한다. 같은 종류 파일이 여러 개면 전부 검사한다.
@@ -110,7 +110,7 @@ function Find-OrphanDefs($text, $defPattern, $linkKeyword) {
 # ISSUE 파일 프론트매터(YAML, --- 사이)에서 라인 단위로 필드를 뽑는다.
 # 중첩 없는 flat 파서다 - 정식 YAML 파서가 아니라 이 문서의 고정 스키마 전용.
 #   원인단계: <stage>
-#   상태: 발견|조치중|파생대기|완료
+#   상태: 발견|조치중|파생대기|사람확인대기|완료
 #   조치:
 #     - 단계: <stage>
 #       파생: <stage 또는 빈값>
@@ -150,6 +150,7 @@ function Get-IssueFrontmatter($filePath) {
     }
     if ($curStage) { $result.조치단계목록 += $curStage }
     $result.마지막파생 = $curDerive
+    $result.마지막조치단계 = $curStage
     return $result
 }
 
@@ -157,8 +158,8 @@ function Get-IssueFrontmatter($filePath) {
 # ISSUE 파일은 항상 issue/2.todo 에 있다(이동하지 않는다) - 각 단계는
 # 자기 앞으로 온 것만 걸러서 GATE 를 FAIL 로 되돌린다.
 #   1) 원인단계 == 나 인데, 내 이름으로 된 조치 블록이 아직 없음 -> 원인 조치 필요
-#   2) 마지막 조치의 파생 == 나 인데, 내 이름으로 된 조치 블록이 아직 없음 -> 파생 조치 필요
-# 상태가 완료인 이슈는 (verify 최종 확인 대기 중일 뿐) 어느 단계도 막지 않는다.
+#   2) 마지막 조치의 파생 == 나 인데, 그 마지막 조치가 내 것이 아님 -> 파생 조치 필요
+# 사람 확인 대기는 issue/3.done 에 두고 vv 게이트가 차단한다.
 function Test-ReturnedIssues($stageName) {
     $todoDir = Join-Path (Join-Path $root 'issue') '2.todo'
     if (-not (Test-Path $todoDir)) { return }
@@ -173,7 +174,7 @@ function Test-ReturnedIssues($stageName) {
         if ($fm.상태 -eq '완료') { continue }
         $acted = $fm.조치단계목록 -contains $stageName
         if ($fm.원인단계 -eq $stageName -and -not $acted) { $causeMine += $f }
-        elseif ($fm.마지막파생 -eq $stageName -and -not $acted) { $deriveMine += $f }
+        elseif ($fm.마지막파생 -eq $stageName -and $fm.마지막조치단계 -ne $stageName) { $deriveMine += $f }
     }
 
     if ($causeMine.Count -gt 0) {
@@ -480,7 +481,7 @@ if ($Stage -eq 'impl') {
         if ($testFiles.Count -eq 0) {
             Fail '실작업 테스트 없음 (tests/test_*.py, .example. 제외). TDD 단계에서 테스트 없이 통과시킬 수 없다'
         } else {
-            $out = & python -m pytest -q --basetemp=./.pytest-tmp 2>&1 | Out-String
+            $out = & python -m pytest -q --basetemp=./tests/.pytest-tmp 2>&1 | Out-String
             if ($LASTEXITCODE -eq 0) {
                 Note "pytest ($($testFiles.Count) 파일) -> 통과"
             } else {
@@ -523,13 +524,12 @@ if ($Stage -eq 'vv') {
 
     $issueRoot = Join-Path $root 'issue'
     $openCount = 0
-    foreach ($state in @('1.open', '2.todo')) {
+    foreach ($state in @('1.open', '2.todo', '3.done')) {
         $sdir = Join-Path $issueRoot $state
-        $n = @(Get-ChildItem $sdir -Filter '*.md' -Recurse -File -ErrorAction SilentlyContinue |
-               Where-Object { $_.Name -notmatch '\(template\)' }).Count
+        $n = @(Get-ChildItem $sdir -Filter 'ISSUE-*.md' -Recurse -File -ErrorAction SilentlyContinue).Count
         if ($n -gt 0) { Fail "미해결 ISSUE: issue/$state 에 $n 건"; $openCount += $n }
     }
-    if ($openCount -eq 0) { Note 'issue/1.open, issue/2.todo 비어 있음' }
+    if ($openCount -eq 0) { Note 'issue/1.open, issue/2.todo, issue/3.done 비어 있음' }
 
     $raw = @(Get-ChildItem (Join-Path $issueRoot '0.issue') -Filter '*.md' -Recurse -File -ErrorAction SilentlyContinue |
              Where-Object { $_.Name -notmatch '\(template\)' }).Count
