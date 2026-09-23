@@ -526,7 +526,8 @@ if ($Stage -eq 'vv') {
     $openCount = 0
     foreach ($state in @('1.open', '2.todo', '3.done')) {
         $sdir = Join-Path $issueRoot $state
-        $n = @(Get-ChildItem $sdir -Filter 'ISSUE-*.md' -Recurse -File -ErrorAction SilentlyContinue).Count
+        $n = @(Get-ChildItem $sdir -Filter 'ISSUE-*.md' -Recurse -File -ErrorAction SilentlyContinue |
+               Where-Object { $_.Name -notmatch '\(template\)' }).Count
         if ($n -gt 0) { Fail "미해결 ISSUE: issue/$state 에 $n 건"; $openCount += $n }
     }
     if ($openCount -eq 0) { Note 'issue/1.open, issue/2.todo, issue/3.done 비어 있음' }
