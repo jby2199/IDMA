@@ -75,7 +75,7 @@ AI 분류를 보조 수단으로 사용하는 Hybrid 구조다.
 
 - `docs/1.Concept/PRD.md` — IDMA 제품 요구사항 명세(상위 문서, 본 SRS의 유일한
   승인 상위 베이스라인).
-- `docs/notes/제출물 관리 자동화 원본 스케치 v1.0.0.md` — 원본 설계 스케치.
+- `docs/notes/참고자료/제출물 관리 자동화 원본 스케치 v1.0.0.md` — 원본 설계 스케치.
   시스템 흐름도·Runtime Config 스키마·상태 모델의 배경 자료이며, 게이트 검사
   대상이 아닌 참고 자료다. 본 SRS와 충돌하는 내용은 본 SRS가 우선한다.
 - `.claude/skills/by-srs-writer/references/srs-template.md` — 본 문서 양식.

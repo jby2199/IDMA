@@ -10,6 +10,8 @@
 
 @.agents/CONVERSATION.md
 
+- General notes: follow [.agents/NOTES.md](.agents/NOTES.md); start at [notes](docs/notes/README.md).
+
 ## 항상 지킬 것
 1. Deliverables (PRD, SRS, SDD, code) must pass traceability, consistency and accuracy checks against each other: PRD holds user requirements without contradiction, SRS refines PRD without omission, SDD traces SRS consistently.
 2. Plan and investigate before implementing. Initial development runs PRD -> SRS -> SDD; start each only after its predecessor is complete.
