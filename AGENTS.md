@@ -20,22 +20,15 @@
 ## 범용 지시사항
 1. 구현 정확성을 높이기 위해, 계획과 파악을 먼저 한다.
 2. 최초 개발 프로세스는 PRD 완성 --> SRS 완성 --> SDD 완성 흐름으로 각 선행 산출물이 완성되면 후속 산출물을 시작한다.
-3. 계획 과정에는
-    - 모순되는 사항은 사용자에게 확인받는다.
-    - 모호한 사항은 사용자에게 물어본다.
+3. 계획 중 모순·모호 사항은 [CONVERSATION.md](CONVERSATION.md) `질문` 절 기준으로 처리한다.
 4. 소프트웨어 수정이 필요한 경우
     - 먼저 PRD/SRS/SDD 를 분석/수정한다.
     - karpathy-guidelines 을 사용한다. 다른 유용한 skill도 같이 활용한다.
 
-## 언어 정책
-도구 호출 사이 서술은 영문 caveman, 최종 답변은 한글.
+## 대화 습관
+대화 습관은 [CONVERSATION.md](CONVERSATION.md)를 읽고 따른다. 이 문서는 개발·게이트 규칙만 다룬다.
 
-- **Tool-call narration** (progress lines like "checking…", "done…") and **Agent-tool prompts / inter-subagent communication** use caveman **ultra English**. Prefix each such line with a short `[bracketed]` Korean gloss of the action, so a Korean-speaking user can tell what's happening at a glance.
-- **Final user-facing replies** (summaries, conclusions, questions) are written in Korean.
-
-## 대화 중 지켜야 할 것 — 언제나 적용
-1. `AskUserQuestion` is disabled. Resolve ambiguity by asking directly in chat — never invoke that tool.
-2. Check change size with `git diff --stat` first; read the full diff only when needed.
+@CONVERSATION.md
 
 ## Skill/Agent 참고
 - ADR 작성 여부 판단·형식 → `by-adr-writer` 스킬
