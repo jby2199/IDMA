@@ -33,7 +33,7 @@
 - Silence, elapsed time or a preselected recommendation is never approval.
 - Question card order: real question in the title -> option summaries -> short consequence per option (state reversibility) -> one-line recommendation. Never put a bare ID heading or bury the question after background.
 - Give each question a stable ID (`Q01`, `Q02`) so answers can cite it. Separate two or more questions with a `---` horizontal rule.
-- Routing: one simple question stays in chat. Two or more questions, or one that requires relating two or more files or architecture elements, go into one discussion file `docs/notes/discussions/DISC-<number>-<slug>.md`. Human-only actions go into `docs/notes/human-todo-<YYYY-MM-DD>.md` as `- [ ]` items with evidence links.
+- Routing: one simple question stays in chat. Two or more questions, or one that requires relating two or more files or architecture elements, go into one discussion file `docs/notes/discussions/DISC-<number>-<slug>.md`; on resume, read that file before asking. Human-only actions (browser checks, approval of recorded decisions, issue registration, uncommitted external changes) go into `docs/notes/human-todo-<YYYY-MM-DD>.md` as `- [ ]` items with evidence links, linked from the current work report.
 
 ```markdown
 ## Q01 한 줄로 된 실제 질문?

@@ -1,47 +1,25 @@
-# claude/agent
+# IDMA — 입력문서관리기
 
-## 도구의 목적/목표
-### 목적
-- 유입 파일을 파일명 기반으로 자동 분류(Rule 우선, AI 보조)해 프로젝트 단계(Phase) 폴더에 배치하고, 제출물 관리대장을 자동 갱신하는 도구를 만들어 수작업 분류·대장 기입 부담을 줄인다.
+## 목적
+유입 파일을 파일명 기반으로 자동 분류(Rule 우선, AI 보조)해 Phase 폴더에 배치하고, 제출물 관리대장을 자동 갱신한다.
 
-### 목표
-- `source_root`에 유입된 파일을 Rule Engine(abbr/full_name 매칭) 1차 분류, 실패 시 AI 보조 분류로 Phase를 판정할 수 있다.
-- 분류 성공 파일은 해당 Phase 폴더로, 분류 실패 파일은 `project_root`에 안전하게 폴백 배치할 수 있다(원본 파일명 유지, 덮어쓰기 금지).
-- 분류 결과(방식·근거·최종 경로·상태)를 제출물 관리대장(xlsx)에 자동 기록하고, 로컬 Python UI로 운영 설정(threshold·경로 등)을 편집할 수 있다.
-
----
-## 범용 목표
-- 이 프로젝트로 만들어지는 결과물간의 추적성, 일관성, 정확성 확인이 통과되어야 한다.
-- PRD: 사용자 요구사항이 PRD 에 모순없이 담겨야 한다.
-- SRS: PRD에 기반하여 소프트웨어 요구사항이 SRS에 누락없이 정제되어야 한다.
-- SDD: 설계/구현 요구사항이 SDD 에 추적되고 일관성있게 작성되어야 한다.
-
-## 범용 지시사항
-1. 구현 정확성을 높이기 위해, 계획과 파악을 먼저 한다.
-2. 최초 개발 프로세스는 PRD 완성 --> SRS 완성 --> SDD 완성 흐름으로 각 선행 산출물이 완성되면 후속 산출물을 시작한다.
-3. 계획 중 모순·모호 사항은 [.agents/CONVERSATION.md](.agents/CONVERSATION.md) `질문` 절 기준으로 처리한다.
-4. 소프트웨어 수정이 필요한 경우
-    - 먼저 PRD/SRS/SDD 를 분석/수정한다.
-    - karpathy-guidelines 을 사용한다. 다른 유용한 skill도 같이 활용한다.
-
-## 대화 습관
-대화 습관은 [.agents/CONVERSATION.md](.agents/CONVERSATION.md)를 읽고 따른다. 이 문서는 개발·게이트 규칙만 다룬다.
+## 목표
+- `source_root` 유입 파일을 Rule Engine(abbr/full_name 매칭)으로 1차 분류하고, 실패 시 AI 보조 분류로 Phase를 판정한다.
+- 분류 성공 파일은 Phase 폴더로, 실패 파일은 `project_root`에 폴백 배치한다(원본 파일명 유지, 덮어쓰기 금지).
+- 분류 결과(방식·근거·최종 경로·상태)를 관리대장(xlsx)에 기록하고, 로컬 Python UI로 운영 설정(threshold·경로 등)을 편집한다.
 
 @.agents/CONVERSATION.md
 
-## Skill/Agent 참고
-- ADR 작성 여부 판단·형식 → `by-adr-writer` 스킬
-- 문서 작성 지원 → `by-prd-writer`, `by-srs-writer` 스킬
-- 순서도/구조도 작성 → `by-mermaid-flowchart` 스킬
-- 서브에이전트 델리게이션 판단 → `cavecrew` 스킬
-- 설계/구현 리뷰 → `.claude/agents/code-reviewer`, `.claude/agents/implementer`
-- 기존 설계/코드 조사 → `.claude/agents/design-reader`
-- SRS/SDD 저작 → `.claude/agents/ieee-830-srs-author`, `.claude/agents/ieee-1016-sdd-author`
-- 단계별 V&V → `.claude/agents/ieee-1012-sil4-vv-expert`
+## 항상 지킬 것
+1. Deliverables (PRD, SRS, SDD, code) must pass traceability, consistency and accuracy checks against each other: PRD holds user requirements without contradiction, SRS refines PRD without omission, SDD traces SRS consistently.
+2. Plan and investigate before implementing. Initial development runs PRD -> SRS -> SDD; start each only after its predecessor is complete.
+3. Before changing software, analyze and update PRD/SRS/SDD first, and apply `karpathy-guidelines`.
 
-## 단계 작업 — 상황별 규칙
-기능 추가·수정 요청을 받거나 `docs`/`impl`/`vv` 단계 작업을 시작할 때 `by-stage-rules` 스킬을 읽고 따른다.
-
-- The skill decides first whether a change may skip `docs`, then gives the rules for the active stage only.
-- If the skill is not discoverable, read [../.claude/skills/by-stage-rules/SKILL.md](../.claude/skills/by-stage-rules/SKILL.md) directly.
-- Tests are never skipped on any path.
+## 상황별 참조
+| Situation | Read |
+|---|---|
+| Feature add/change request; `docs`/`impl`/`vv` stage work | `by-stage-rules` skill ([SKILL.md](../.claude/skills/by-stage-rules/SKILL.md)). Tests are never skipped. |
+| ADR need and format | `by-adr-writer` |
+| PRD/SRS writing | `by-prd-writer`, `by-srs-writer` |
+| Flowcharts and structure diagrams | `by-mermaid-flowchart` |
+| Delegating authoring/implementation/review | agents `ieee-830-srs-author` (SRS), `ieee-1016-sdd-author` (SDD), `implementer`, `code-reviewer`, `design-reader`, `ieee-1012-sil4-vv-expert` |
