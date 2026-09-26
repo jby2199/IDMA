@@ -19,15 +19,15 @@
 ## 범용 지시사항
 1. 구현 정확성을 높이기 위해, 계획과 파악을 먼저 한다.
 2. 최초 개발 프로세스는 PRD 완성 --> SRS 완성 --> SDD 완성 흐름으로 각 선행 산출물이 완성되면 후속 산출물을 시작한다.
-3. 계획 중 모순·모호 사항은 [CONVERSATION.md](CONVERSATION.md) `질문` 절 기준으로 처리한다.
+3. 계획 중 모순·모호 사항은 [.agents/CONVERSATION.md](.agents/CONVERSATION.md) `질문` 절 기준으로 처리한다.
 4. 소프트웨어 수정이 필요한 경우
     - 먼저 PRD/SRS/SDD 를 분석/수정한다.
     - karpathy-guidelines 을 사용한다. 다른 유용한 skill도 같이 활용한다.
 
 ## 대화 습관
-대화 습관은 [CONVERSATION.md](CONVERSATION.md)를 읽고 따른다. 이 문서는 개발·게이트 규칙만 다룬다.
+대화 습관은 [.agents/CONVERSATION.md](.agents/CONVERSATION.md)를 읽고 따른다. 이 문서는 개발·게이트 규칙만 다룬다.
 
-@CONVERSATION.md
+@.agents/CONVERSATION.md
 
 ## Skill/Agent 참고
 - ADR 작성 여부 판단·형식 → `by-adr-writer` 스킬

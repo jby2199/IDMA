@@ -3,7 +3,7 @@
 사용자와의 모든 대화에 적용하는 공통 습관이다. 프로젝트 `AGENTS.md`는 개발·게이트 규칙만 두고 이 파일을 참조한다.
 
 > [!IMPORTANT]
-> Canonical source: workspace `develop/4.docs/templates/CONVERSATION.md`. Each project keeps a verbatim copy at `<project>/CONVERSATION.md`. Edit the canonical file first, then re-copy it to every project; never edit a project copy alone.
+> Canonical source: workspace `develop/4.docs/templates/CONVERSATION.md`. Each project keeps a verbatim copy at `<project>/.agents/CONVERSATION.md`. Edit the canonical file first, then re-copy it to every project; never edit a project copy alone.
 > Precedence: safety > accuracy > form. Higher-priority user/global instructions and the active output style still apply. For conversation habits this file supersedes older wording left in any project document.
 
 ## 언어와 압축
@@ -71,11 +71,11 @@
 ## 참고 스킬
 스킬을 쓸 수 없는 런타임에서는 이 파일이 최소 계약이다.
 
-| Skill | Use | Claude path from a project |
+| Skill | Use | Claude path from `<project>/.agents/` |
 |---|---|---|
-| `by-caveman-hyper` | Compression rules and symbols | `../.claude/skills/by-caveman-hyper/SKILL.md` |
-| `by-human-interaction` | Reply contract, questions, discussion files, goal-based decisions | `../.claude/skills/by-human-interaction/SKILL.md` |
-| `by-decision` | Reproducing the user's judgment on development choices | `../.claude/agents/by-decision.md` |
-| `by-mermaid-flowchart` | Mermaid notation | `../.claude/skills/by-mermaid-flowchart/SKILL.md` |
+| `by-caveman-hyper` | Compression rules and symbols | `../../.claude/skills/by-caveman-hyper/SKILL.md` |
+| `by-human-interaction` | Reply contract, questions, discussion files, goal-based decisions | `../../.claude/skills/by-human-interaction/SKILL.md` |
+| `by-decision` | Reproducing the user's judgment on development choices | `../../.claude/agents/by-decision.md` |
+| `by-mermaid-flowchart` | Mermaid notation | `../../.claude/skills/by-mermaid-flowchart/SKILL.md` |
 
-Codex counterparts live under `../.codex/skills/`.
+Codex counterparts live under `../../.codex/skills/`.
