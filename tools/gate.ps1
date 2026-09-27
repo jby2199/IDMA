@@ -8,7 +8,9 @@ GATE.md 는 사람도 모델도 손으로 고치지 않는다. 판정은 이 스
 통과하면 exit 0, 실패하면 exit 1.
 
 단계는 3개다:
-  docs  요건+설계 (PRD/SRS/SDD/SAD/adr)   — 최상류
+  docs  요건+설계 (PRD/SRS/SAD 필수, adr)   — 최상류
+        SDD 는 검사하지 않는다(2026-09-27 결정: 설계 문서는 SAD 까지만). SDD 파일이
+        있어도 판정 대상이 아니다 — 요건변경 감지 대상과 ADR 깨진 참조 탐지에만 포함된다.
   impl  구현 (src/, tests/)
   vv    사용자 실테스트 + 이슈 등록/조치 (issue/0.issue, 1.open, 2.todo, 3.done, 4.archive)
 
@@ -49,7 +51,7 @@ function Resolve-SkillsDir($startDir) {
 
 # 실작업 파일만: (template) / .example. 제외
 # 산출 문서는 <단계>/docs/ 에 둔다. 하위 폴더(adr/ 등)까지 재귀 검색한다.
-# $prefix 는 문서 접두(예: 'SDD','SAD','PRD') — 파일명 어디에 있어도 잡는다
+# $prefix 는 문서 접두(예: 'SAD','SRS','PRD') — 파일명 어디에 있어도 잡는다
 # (예: '2.SAD.md' 도 SAD 로 잡힘). 대문자 접두만 인정한다 — 소문자 'sad.md' 는
 # 검사 대상에서 제외된다(의도적 미검사 표시로 오해할 여지를 없앤다).
 function Get-WorkFiles($stageDir, $prefix) {
@@ -332,26 +334,28 @@ if ($Stage -eq 'docs') {
     $dir = Join-Path $root 'docs'
     $prdFiles = Get-WorkFiles $dir 'PRD'
     $srsFiles = Get-WorkFiles $dir 'SRS'
-    $sddFiles = Get-WorkFiles $dir 'SDD'
+    # SAD 는 필수 설계 문서다. SDD 는 검사하지 않는다(존재·validate.py·[확인 필요]·ID·
+    # 구현요건 링크·SRS 커버 전부 제외) - 구현 수준 설계는 SAD 범위 안에서 개발자 판단에 맡긴다.
+    $sadFiles = Get-WorkFiles $dir 'SAD'
 
     if ($prdFiles.Count -eq 0) { Fail '실작업 PRD 문서 없음 (*PRD*.md, 대문자만, (template) 제외)' }
     if ($srsFiles.Count -eq 0) { Fail '실작업 SRS 문서 없음 (*SRS*.md, 대문자만, (template) 제외)' }
-    if ($sddFiles.Count -eq 0) { Fail '실작업 SDD 문서 없음 (*SDD*.md, 대문자만, (template) 제외)' }
+    if ($sadFiles.Count -eq 0) { Fail '실작업 SAD 문서 없음 — SAD 필수. SDD는 더 이상 검사하지 않음 (docs/3.Design/SAD.md 작성; *SAD*.md, 대문자만, (template) 제외)' }
     if ($prdFiles.Count -gt 0) { Note "PRD 대상 $($prdFiles.Count) 건: $(($prdFiles | ForEach-Object Name) -join ', ')" }
     if ($srsFiles.Count -gt 0) { Note "SRS 대상 $($srsFiles.Count) 건: $(($srsFiles | ForEach-Object Name) -join ', ')" }
-    if ($sddFiles.Count -gt 0) { Note "SDD 대상 $($sddFiles.Count) 건: $(($sddFiles | ForEach-Object Name) -join ', ')" }
+    if ($sadFiles.Count -gt 0) { Note "SAD 대상 $($sadFiles.Count) 건: $(($sadFiles | ForEach-Object Name) -join ', ')" }
 
     $skills = Resolve-SkillsDir $root
     $prdVal = Join-Path $skills 'by-prd-writer\scripts\validate.py'
     $srsVal = Join-Path $skills 'by-srs-writer\scripts\validate.py'
-    $sddVal = Join-Path $skills 'by-sdd-writer\scripts\validate.py'
+    $sadVal = Join-Path $skills 'by-sad-writer\scripts\validate.py'
     foreach ($f in $prdFiles) { Invoke-Validator $prdVal $f 'PRD' }
     foreach ($f in $srsFiles) { Invoke-Validator $srsVal $f 'SRS' }
-    foreach ($f in $sddFiles) { Invoke-Validator $sddVal $f 'SDD' }
+    foreach ($f in $sadFiles) { Invoke-Validator $sadVal $f 'SAD' }
 
     $prd = Read-All $prdFiles
     $srs = Read-All $srsFiles
-    $sdd = Read-All $sddFiles
+    $sad = Read-All $sadFiles
 
     # --- 요건 (구 01-req) ---
     foreach ($pair in @(@('PRD', $prd), @('SRS', $srs))) {
@@ -384,62 +388,28 @@ if ($Stage -eq 'docs') {
     }
 
     # --- 설계 (구 02-design) ---
-    if ($sdd -and $sdd -match '\[확인 필요') {
-        $n = ([regex]::Matches($sdd, '\[확인 필요')).Count
-        Fail "SDD 에 미해결 [확인 필요] $n 건 남음"
+    # SAD 필수. SDD 검사는 전부 폐지(2026-09-27 결정).
+    if ($sad -and $sad -match '\[확인 필요') {
+        $n = ([regex]::Matches($sad, '\[확인 필요')).Count
+        Fail "SAD 에 미해결 [확인 필요] $n 건 남음"
     }
 
-    $sddIds = Get-Ids $sdd '\[(SDD-[MIDC]\d{2,})\]'
-    if ($sdd -and $sddIds.Count -eq 0) { Fail 'SDD 에 [SDD-M###]/[SDD-I###] 형식 ID 없음' }
+    $sadIds = Get-Ids $sad '\[(SAD-[CIQR]\d{2,})\]'
+    if ($sad -and $sadIds.Count -eq 0) { Fail 'SAD 에 [SAD-C###]/[SAD-I###]/[SAD-Q###] 형식 ID 없음' }
 
-    $orphanSdd = Find-OrphanDefs $sdd '\[(SDD-[MIDC]\d{2,})\]' '구현요건'
-    if ($orphanSdd.Count -gt 0) { Fail ("구현요건 링크 없는 SDD 항목: " + ($orphanSdd -join ', ')) }
+    $orphanSad = Find-OrphanDefs $sad '\[(SAD-[CIQR]\d{2,})\]' '구현요건'
+    if ($orphanSad.Count -gt 0) { Fail ("구현요건 링크 없는 SAD 항목: " + ($orphanSad -join ', ')) }
 
-    if ($srs -and $sdd) {
-        $covered = @()
-        foreach ($m in [regex]::Matches($sdd, '구현요건\s*:\s*(.+)')) {
+    if ($srs -and $sad) {
+        $coveredSad = @()
+        foreach ($m in [regex]::Matches($sad, '구현요건\s*:\s*(.+)')) {
             foreach ($id in [regex]::Matches($m.Groups[1].Value, '<(SRS-[FN]\d{3})>')) {
-                $covered += $id.Groups[1].Value
+                $coveredSad += $id.Groups[1].Value
             }
         }
-        $missing = @($srsReq | Where-Object { $covered -notcontains $_ })
-        if ($missing.Count -gt 0) { Fail ("SDD 가 커버하지 않은 SRS 요구사항: " + ($missing -join ', ')) }
-        else { Note "추적: SRS 요구사항 $($srsReq.Count) 건 전부 SDD 커버 (SDD 항목 $($sddIds.Count) 건)" }
-    }
-
-    # SAD 는 선택 문서다. 있으면 검사하고, 없으면 건너뛴다.
-    $sadFiles = Get-WorkFiles $dir 'SAD'
-    $sad = ''
-    if ($sadFiles.Count -eq 0) {
-        Note 'SAD 없음 -> 구조 문서 검사 건너뜀 (선택 문서)'
-    } else {
-        Note "SAD 대상 $($sadFiles.Count) 건: $(($sadFiles | ForEach-Object Name) -join ', ')"
-        $sadVal = Join-Path $skills 'by-sad-writer\scripts\validate.py'
-        foreach ($f in $sadFiles) { Invoke-Validator $sadVal $f 'SAD' }
-
-        $sad = Read-All $sadFiles
-        if ($sad -match '\[확인 필요') {
-            $n = ([regex]::Matches($sad, '\[확인 필요')).Count
-            Fail "SAD 에 미해결 [확인 필요] $n 건 남음"
-        }
-
-        $sadIds = Get-Ids $sad '\[(SAD-[CIQR]\d{2,})\]'
-        if ($sadIds.Count -eq 0) { Fail 'SAD 에 [SAD-C###]/[SAD-I###]/[SAD-Q###] 형식 ID 없음' }
-
-        $orphanSad = Find-OrphanDefs $sad '\[(SAD-[CIQR]\d{2,})\]' '구현요건'
-        if ($orphanSad.Count -gt 0) { Fail ("구현요건 링크 없는 SAD 항목: " + ($orphanSad -join ', ')) }
-
-        if ($srs) {
-            $coveredSad = @()
-            foreach ($m in [regex]::Matches($sad, '구현요건\s*:\s*(.+)')) {
-                foreach ($id in [regex]::Matches($m.Groups[1].Value, '<(SRS-[FN]\d{3})>')) {
-                    $coveredSad += $id.Groups[1].Value
-                }
-            }
-            $missingSad = @($srsReq | Where-Object { $coveredSad -notcontains $_ })
-            if ($missingSad.Count -gt 0) { Fail ("SAD 가 커버하지 않은 SRS 요구사항: " + ($missingSad -join ', ')) }
-            else { Note "추적: SRS 요구사항 $($srsReq.Count) 건 전부 SAD 커버 (SAD 항목 $($sadIds.Count) 건)" }
-        }
+        $missingSad = @($srsReq | Where-Object { $coveredSad -notcontains $_ })
+        if ($missingSad.Count -gt 0) { Fail ("SAD 가 커버하지 않은 SRS 요구사항: " + ($missingSad -join ', ')) }
+        else { Note "추적: SRS 요구사항 $($srsReq.Count) 건 전부 SAD 커버 (SAD 항목 $($sadIds.Count) 건)" }
     }
 
     # adr/ 는 docs 하위 어디에든 있을 수 있다(예: docs/3.Design/adr/) - 재귀로 찾는다.
@@ -455,8 +425,11 @@ if ($Stage -eq 'docs') {
     if ($undecided.Count -gt 0) { Fail ("미결정 ADR: " + (($undecided | ForEach-Object Name) -join ', ')) }
     elseif ($adrFiles.Count -gt 0) { Note "ADR $($adrFiles.Count) 건 전부 결정 완료" }
 
-    # SAD/SDD 가 참조한 ADR 번호가 실제 파일로 존재하는지 (깨진 링크만 차단)
-    $refText = @($sdd, $sad) -join "`n"
+    # SAD/SDD 가 참조한 ADR 번호가 실제 파일로 존재하는지 (깨진 링크만 차단).
+    # SDD 는 판정 대상이 아니지만, 사용자 명시 요청으로 기록된 구현 결정이 ADR 을 인용할 수
+    # 있어 깨진 ADR 참조 탐지에만 본문을 읽는다(SDD 자체에 대한 FAIL 조건은 없다).
+    $sddRefText = Read-All (Get-WorkFiles $dir 'SDD')
+    $refText = @($sddRefText, $sad) -join "`n"
     $refIds = Get-Ids $refText '\b(ADR-\d{2,})\b'
     if ($refIds.Count -gt 0) {
         $adrNames = @($adrFiles | ForEach-Object { $_.Name })
@@ -493,23 +466,8 @@ if ($Stage -eq 'impl') {
         if ($LASTEXITCODE -eq 0) { Note 'compileall -> 통과' } else { Fail 'compileall 실패' }
     } finally { Pop-Location }
 
-    # SDD 모듈/인터페이스가 코드에 실제로 나타나는지.
-    # 스캔은 src/ tests/ 만 본다 - 루트 전체를 훑으면 docs/3.Design/SDD.md 자기 자신이 매핑
-    # 소스로 잡혀 이 검사가 항상 통과해버린다(무의미해진다).
-    $sdd = Read-All (Get-WorkFiles $root 'SDD')
-    if ($sdd) {
-        $ids = Get-Ids $sdd '\[(SDD-[MI]\d{2,})\]'
-        $scanDirs = @(@('src', 'tests') | ForEach-Object { Join-Path $root $_ } | Where-Object { Test-Path $_ })
-        $files = @()
-        if ($scanDirs.Count -gt 0) {
-            $files = @(Get-ChildItem $scanDirs -Recurse -File -Include '*.py','*.md','*.ts','*.js' -ErrorAction SilentlyContinue |
-                       Where-Object { $_.FullName -notmatch '\\node_modules\\' -and $_.FullName -notmatch '__pycache__' })
-        }
-        $blob = ($files | ForEach-Object { [System.IO.File]::ReadAllText($_.FullName) }) -join "`n"
-        $unmapped = @($ids | Where-Object { $blob -notmatch [regex]::Escape($_) })
-        if ($unmapped.Count -gt 0) { Fail ("코드에 매핑되지 않은 SDD 항목: " + ($unmapped -join ', ')) }
-        elseif ($ids.Count -gt 0) { Note "추적: SDD 모듈/인터페이스 $($ids.Count) 건 전부 코드 매핑 확인" }
-    }
+    # 설계->코드 매핑 검사는 없다. SDD->코드 매핑은 2026-09-27 폐지(SDD 미검사),
+    # SAD->코드 매핑은 두지 않는다 - SAD 는 구조·결정 문서라 코드 식별자와 1:1 대응하지 않는다.
 
     Test-ReturnedIssues 'impl'
 }

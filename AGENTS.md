@@ -13,9 +13,9 @@
 - General notes: follow [.agents/NOTES.md](.agents/NOTES.md); start at [notes](docs/notes/README.md).
 
 ## 항상 지킬 것
-1. Deliverables (PRD, SRS, SDD, code) must pass traceability, consistency and accuracy checks against each other: PRD holds user requirements without contradiction, SRS refines PRD without omission, SDD traces SRS consistently.
-2. Plan and investigate before implementing. Initial development runs PRD -> SRS -> SDD; start each only after its predecessor is complete.
-3. Before changing software, analyze and update PRD/SRS/SDD first, and apply `karpathy-guidelines`.
+1. Deliverables (PRD, SRS, SAD, code) must pass traceability, consistency and accuracy checks against each other: PRD holds user requirements without contradiction, SRS refines PRD without omission, SAD covers SRS consistently. SDD is not gate-checked; new SDD items are ID + name + `사용자의 명시적 요구가 없는 한 구현은 SAD 내에서 개발자 판단하에 진행한다.`
+2. Plan and investigate before implementing. Initial development runs PRD -> SRS -> SAD; start each only after its predecessor is complete.
+3. Before changing software, analyze and update PRD/SRS/SAD first, and apply `karpathy-guidelines`.
 
 ## 상황별 참조
 | Situation | Read |
@@ -24,4 +24,4 @@
 | ADR need and format | `by-adr-writer` |
 | PRD/SRS writing | `by-prd-writer`, `by-srs-writer` |
 | Flowcharts and structure diagrams | `by-mermaid-flowchart` |
-| Delegating authoring/implementation/review | agents `ieee-830-srs-author` (SRS), `ieee-1016-sdd-author` (SDD), `implementer`, `code-reviewer`, `design-reader`, `ieee-1012-sil4-vv-expert` |
+| Delegating authoring/implementation/review | agents `ieee-830-srs-author` (SRS), `ieee-1016-sdd-author` (SDD stubs + explicit user decisions), `implementer`, `code-reviewer`, `design-reader`, `ieee-1012-sil4-vv-expert` |
