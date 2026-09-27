@@ -10,7 +10,7 @@ GATE.md 는 사람도 모델도 손으로 고치지 않는다. 판정은 이 스
 단계는 3개다:
   docs  요건+설계 (PRD/SRS/SAD 필수, adr)   — 최상류
         SDD 는 검사하지 않는다(2026-09-27 결정: 설계 문서는 SAD 까지만). SDD 파일이
-        있어도 판정 대상이 아니다 — 요건변경 감지 대상과 ADR 깨진 참조 탐지에만 포함된다.
+        있어도 판정·요건변경 감지·ADR 참조 탐지 어디에도 쓰지 않는다.
   impl  구현 (src/, tests/)
   vv    사용자 실테스트 + 이슈 등록/조치 (issue/0.issue, 1.open, 2.todo, 3.done, 4.archive)
 
@@ -221,7 +221,9 @@ function Test-UpstreamDrift {
     # ('docs/1.Concept/PRD.md' 처럼) 박아뒀는데, 문서에 순번 접두가 붙으면서('0.PRD.md')
     # 그 목록에 걸리지 않아 요건을 고쳐도 감지가 안 됐다(fail-open).
     # 이제 Get-WorkFiles 와 같은 규칙으로 판정한다:
-    #   - 대문자 PRD/SRS/SDD/SAD 가 파일명 어디에 있어도 대상
+    #   - 대문자 PRD/SRS/SAD 가 파일명 어디에 있어도 대상
+    #   - SDD 는 제외(2026-09-27 D8): SDD 에 사용자 명시 구현 결정을 적어도 docs 게이트를
+    #     다시 돌리지 않는다
     #   - adr/ 아래 .md 전부 대상
     #   - (template) / .example. / notes/ 는 제외
     $targets = @('docs')
@@ -260,7 +262,7 @@ function Test-UpstreamDrift {
                         Where-Object {
                             $_.Name -notmatch '\(template\)' -and $_.Name -notmatch '\.example\.' -and
                             $_.FullName -notmatch '\\notes\\' -and
-                            ($_.Name -cmatch '(PRD|SRS|SDD|SAD)' -or $_.FullName -match '\\adr\\|/adr/') -and
+                            ($_.Name -cmatch '(PRD|SRS|SAD)' -or $_.FullName -match '\\adr\\|/adr/') -and
                             $_.LastWriteTimeUtc -gt $anchorTime
                         } | ForEach-Object { "docs/" + $_.FullName.Substring((Join-Path $root 'docs').Length + 1).Replace('\', '/') })
                     if ($changed.Count -gt 0) {
@@ -290,7 +292,7 @@ function Test-UpstreamDrift {
             $_ -and $_.Trim() -and
             $_ -notmatch '\(template\)' -and $_ -notmatch '\.example\.' -and
             $_ -notmatch '^docs/notes/' -and
-            ($_ -match '^docs/.*(PRD|SRS|SDD|SAD)[^/]*\.md$' -or $_ -match '^docs/.*/adr/.*\.md$')
+            ($_ -match '^docs/.*(PRD|SRS|SAD)[^/]*\.md$' -or $_ -match '^docs/.*/adr/.*\.md$')
         })
     } finally {
         Pop-Location
@@ -425,12 +427,9 @@ if ($Stage -eq 'docs') {
     if ($undecided.Count -gt 0) { Fail ("미결정 ADR: " + (($undecided | ForEach-Object Name) -join ', ')) }
     elseif ($adrFiles.Count -gt 0) { Note "ADR $($adrFiles.Count) 건 전부 결정 완료" }
 
-    # SAD/SDD 가 참조한 ADR 번호가 실제 파일로 존재하는지 (깨진 링크만 차단).
-    # SDD 는 판정 대상이 아니지만, 사용자 명시 요청으로 기록된 구현 결정이 ADR 을 인용할 수
-    # 있어 깨진 ADR 참조 탐지에만 본문을 읽는다(SDD 자체에 대한 FAIL 조건은 없다).
-    $sddRefText = Read-All (Get-WorkFiles $dir 'SDD')
-    $refText = @($sddRefText, $sad) -join "`n"
-    $refIds = Get-Ids $refText '\b(ADR-\d{2,})\b'
+    # SAD 가 참조한 ADR 번호가 실제 파일로 존재하는지 (깨진 링크만 차단).
+    # SDD 본문은 읽지 않는다(2026-09-27 D8: SDD 미검사).
+    $refIds = Get-Ids $sad '\b(ADR-\d{2,})\b'
     if ($refIds.Count -gt 0) {
         $adrNames = @($adrFiles | ForEach-Object { $_.Name })
         $broken = @($refIds | Where-Object { $id = $_; -not ($adrNames | Where-Object { $_ -like "$id*" }) })
