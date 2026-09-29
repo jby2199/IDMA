@@ -1,14 +1,14 @@
-# issue
+# 검증 및 이슈
 
 이 문서는 **사람이 구조를 파악하기 위한 것**이다. 지침은 루트 `AGENTS.md`를 본다.
-폴더명은 `issue`지만 게이트 단계명은 여전히 `vv`다(`gate.ps1 vv`).
+이슈 상태 폴더는 `docs/5.validate/`에 둔다. 게이트 단계명은 `vv`다(`gate.ps1 vv`).
 
 ## 전체 파이프라인
 
 ```mermaid
 flowchart TB
     A["docs<br/>요건+설계"] -->|"① GATE PASS"| B["impl<br/>구현"]
-    B -->|"② GATE PASS"| C["vv<br/>사용자 실테스트 (issue/)"]
+    B -->|"② GATE PASS"| C["vv<br/>사용자 실테스트 (docs/5.validate/)"]
     C -->|"③ vv:<br/>ISSUE 반송"| A
     C -->|"③ vv:<br/>ISSUE 반송"| B
 ```
@@ -71,7 +71,7 @@ flowchart TB
   않고 그 단계의 다음 `gate.ps1` 실행이 자동으로 이어받는다. **단계끼리 직접 이어간다**,
   vv는 중간에 관여 안 함.
 - **사람 인계**: 파생 체인이 끝나고 자동검증이 통과하면 담당 단계가 `상태: 사람확인대기`로
-  기록하고 `3.done`으로 옮긴다. 사람 실테스트 절차는 이 ISSUE 또는 `issue/validation/`에 둔다.
+  기록하고 `3.done`으로 옮긴다. 사람 실테스트 절차는 이 ISSUE 또는 `docs/5.validate/validation/`에 둔다.
 - **종결**: 사람이 통과를 확인한 후 `상태: 완료`로 기록하고 `4.archive`로 옮긴다.
   실패하면 결과를 기록하고 원인이 명확할 때 `2.todo`, 아직 모를 때 `1.open`으로 되돌린다.
 
@@ -81,5 +81,5 @@ flowchart TB
 
 vv 게이트는 **TC 문서를 요구하지 않는다.** 실사용에서 TC를 만들기 어렵고 유효성도 떨어져
 강제를 폐지했다. 게이트가 보는 것은 미해결 이슈(`1.open`·`2.todo`·`3.done`)가 비어
-있는지다. 사람 확인 절차는 필요할 때 `issue/validation/`에 두고, 실행 결과는
-`issue/results/`에 남긴다. `tests/`는 구현 자동시험이며 사람 실테스트와 구별한다.
+있는지다. 사람 확인 절차는 필요할 때 `docs/5.validate/validation/`에 두고, 실행 결과는
+`docs/5.validate/results/`에 남긴다. `tests/`는 구현 자동시험이며 사람 실테스트와 구별한다.

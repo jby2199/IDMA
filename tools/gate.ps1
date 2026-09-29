@@ -12,7 +12,7 @@ GATE.md 는 사람도 모델도 손으로 고치지 않는다. 판정은 이 스
         SDD 는 검사하지 않는다(2026-09-27 결정: 설계 문서는 SAD 까지만). SDD 파일이
         있어도 판정·요건변경 감지·ADR 참조 탐지 어디에도 쓰지 않는다.
   impl  구현 (src/, tests/)
-  vv    사용자 실테스트 + 이슈 등록/조치 (issue/0.issue, 1.open, 2.todo, 3.done, 4.archive)
+  vv    사용자 실테스트 + 이슈 등록/조치 (docs/5.validate/0.issue, 1.open, 2.todo, 3.done, 4.archive)
 
 검사 대상은 '실작업 파일'이다. 파일명에 '(template)' 또는 '.example.' 이 들어간 것은
 템플릿/예시로 간주해 제외한다. 같은 종류 파일이 여러 개면 전부 검사한다.
@@ -61,6 +61,7 @@ function Get-WorkFiles($stageDir, $prefix) {
     return @(Get-ChildItem -LiteralPath $searchRoot -Filter '*.md' -File -Recurse -ErrorAction SilentlyContinue |
         Where-Object {
             $_.Name -notmatch '\(template\)' -and $_.Name -notmatch '\.example\.' -and
+            $_.FullName -notmatch '[\\/]5\.validate[\\/]' -and
             ($_.Name -cmatch [regex]::Escape($prefix))
         })
 }
@@ -157,13 +158,13 @@ function Get-IssueFrontmatter($filePath) {
 }
 
 # 이 단계 앞으로 지목된 ISSUE(원인단계 or 파생 대상)가 아직 처리 안 됐는지 확인.
-# ISSUE 파일은 항상 issue/2.todo 에 있다(이동하지 않는다) - 각 단계는
+# ISSUE 파일은 항상 docs/5.validate/2.todo 에 있다(이동하지 않는다) - 각 단계는
 # 자기 앞으로 온 것만 걸러서 GATE 를 FAIL 로 되돌린다.
 #   1) 원인단계 == 나 인데, 내 이름으로 된 조치 블록이 아직 없음 -> 원인 조치 필요
 #   2) 마지막 조치의 파생 == 나 인데, 그 마지막 조치가 내 것이 아님 -> 파생 조치 필요
-# 사람 확인 대기는 issue/3.done 에 두고 vv 게이트가 차단한다.
+# 사람 확인 대기는 docs/5.validate/3.done 에 두고 vv 게이트가 차단한다.
 function Test-ReturnedIssues($stageName) {
-    $todoDir = Join-Path (Join-Path $root 'issue') '2.todo'
+    $todoDir = Join-Path (Join-Path $root 'docs/5.validate') '2.todo'
     if (-not (Test-Path $todoDir)) { return }
     $files = @(Get-ChildItem $todoDir -Filter '*.md' -File -ErrorAction SilentlyContinue |
                Where-Object { $_.Name -notmatch '\(template\)' })
@@ -180,11 +181,11 @@ function Test-ReturnedIssues($stageName) {
     }
 
     if ($causeMine.Count -gt 0) {
-        $refs = ($causeMine | ForEach-Object { "issue/2.todo/$($_.Name)" }) -join ', '
+        $refs = ($causeMine | ForEach-Object { "docs/5.validate/2.todo/$($_.Name)" }) -join ', '
         Fail "반송된 ISSUE $($causeMine.Count) 건 처리 필요: $refs"
     }
     if ($deriveMine.Count -gt 0) {
-        $refs = ($deriveMine | ForEach-Object { "issue/2.todo/$($_.Name)" }) -join ', '
+        $refs = ($deriveMine | ForEach-Object { "docs/5.validate/2.todo/$($_.Name)" }) -join ', '
         Fail "파생 조치 필요 ISSUE $($deriveMine.Count) 건: $refs"
     }
 }
@@ -262,6 +263,7 @@ function Test-UpstreamDrift {
                         Where-Object {
                             $_.Name -notmatch '\(template\)' -and $_.Name -notmatch '\.example\.' -and
                             $_.FullName -notmatch '\\notes\\' -and
+                            $_.FullName -notmatch '[\\/]5\.validate[\\/]' -and
                             ($_.Name -cmatch '(PRD|SRS|SAD)' -or $_.FullName -match '\\adr\\|/adr/') -and
                             $_.LastWriteTimeUtc -gt $anchorTime
                         } | ForEach-Object { "docs/" + $_.FullName.Substring((Join-Path $root 'docs').Length + 1).Replace('\', '/') })
@@ -292,6 +294,7 @@ function Test-UpstreamDrift {
             $_ -and $_.Trim() -and
             $_ -notmatch '\(template\)' -and $_ -notmatch '\.example\.' -and
             $_ -notmatch '^docs/notes/' -and
+            $_ -notmatch '^docs/5\.validate/' -and
             ($_ -match '^docs/.*(PRD|SRS|SAD)[^/]*\.md$' -or $_ -match '^docs/.*/adr/.*\.md$')
         })
     } finally {
@@ -479,19 +482,19 @@ if ($Stage -eq 'vv') {
     Test-UpstreamChain @('docs', 'impl')
     Test-UpstreamDrift
 
-    $issueRoot = Join-Path $root 'issue'
+    $issueRoot = Join-Path $root 'docs/5.validate'
     $openCount = 0
     foreach ($state in @('1.open', '2.todo', '3.done')) {
         $sdir = Join-Path $issueRoot $state
         $n = @(Get-ChildItem $sdir -Filter 'ISSUE-*.md' -Recurse -File -ErrorAction SilentlyContinue |
                Where-Object { $_.Name -notmatch '\(template\)' }).Count
-        if ($n -gt 0) { Fail "미해결 ISSUE: issue/$state 에 $n 건"; $openCount += $n }
+        if ($n -gt 0) { Fail "미해결 ISSUE: docs/5.validate/$state 에 $n 건"; $openCount += $n }
     }
-    if ($openCount -eq 0) { Note 'issue/1.open, issue/2.todo, issue/3.done 비어 있음' }
+    if ($openCount -eq 0) { Note 'docs/5.validate/1.open, docs/5.validate/2.todo, docs/5.validate/3.done 비어 있음' }
 
     $raw = @(Get-ChildItem (Join-Path $issueRoot '0.issue') -Filter '*.md' -Recurse -File -ErrorAction SilentlyContinue |
              Where-Object { $_.Name -notmatch '\(template\)' }).Count
-    if ($raw -gt 0) { Note "참고: issue/0.issue 에 미분류 사용자 기록 $raw 건 (게이트 판정 대상 아님)" }
+    if ($raw -gt 0) { Note "참고: docs/5.validate/0.issue 에 미분류 사용자 기록 $raw 건 (게이트 판정 대상 아님)" }
 }
 
 # ----------------------------------------------------------------- 결과
