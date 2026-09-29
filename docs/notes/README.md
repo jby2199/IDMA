@@ -14,6 +14,14 @@
 
 [배치·종료 기준](../../.agents/NOTES.md)
 
-한 단계 전용 노트: [1.Concept](../1.Concept/notes/README.md) · [2.Requirement](../2.Requirement/notes/README.md) · [3.Design](../3.Design/notes/README.md) · [4.Implementation](../4.Implementation/notes/README.md) · [5.validate](../5.validate/notes/README.md)
+모든 단계의 노트는 이 폴더에서 역할·상태별로 찾는다.
 
 [자동생성 현황](../현황.md) — 생성 시점의 기록.
+
+## 전체 노트 목록
+
+이 목록은 2026-09-29 통합 시점 기준이다.
+
+- [LLM작업/진행중/초기빌드-잔여확인.md](<LLM작업/진행중/초기빌드-잔여확인.md>)
+- [진행보고/이력/Codex 1차 자동빌드 결과물.md](<진행보고/이력/Codex 1차 자동빌드 결과물.md>)
+- [참고자료/제출물 관리 자동화 원본 스케치 v1.0.0.md](<참고자료/제출물 관리 자동화 원본 스케치 v1.0.0.md>)

@@ -13,10 +13,10 @@ notes/
 ```
 
 ## 위치 선택
-한 단계 전용은 해당 단계 notes, 여러 단계·개발 전반은 공통 notes에 둔다.
+모든 프로젝트 노트는 단계와 무관하게 docs/notes 한 곳에 둔다.
 
-- Choose `docs/1.Concept/notes/` through `docs/5.validate/notes/` when the note's work or decision belongs to exactly one stage. Preserve actual existing stage names. Citing an upstream document does not by itself make a note cross-stage.
-- Use `docs/notes/` for cross-stage or project-wide work. Use workspace `4.docs/notes/` for non-project and shared-workspace notes.
+- Use only `docs/notes/` for every project note, including single-stage work. Do not create notes folders inside stages 1-5.
+- Keep the role/state structure under that single project notes root. Use workspace `4.docs/notes/` for non-project and shared-workspace notes.
 - Keep formal PRD/SRS/SAD/SDD/ADR, gate files, issue records and V&V reports in their canonical locations. Notes do not replace them.
 - Prepare the seven leaf folders shown above. Preserve empty leaves with `.gitkeep`; create additional subject folders only when used.
 

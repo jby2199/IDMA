@@ -1,6 +1,7 @@
 # 대화 기본 습관
 
-사용자와의 모든 대화에 적용하는 공통 습관이다. 프로젝트 `AGENTS.md`는 개발·게이트 규칙만 두고 이 파일을 참조한다.
+사용자와의 모든 대화에 적용하는 공통 습관이다.
+이걸 못 지키겠으면 그냥 '한강 작가' 필체로 대화하라.
 
 > [!IMPORTANT]
 > Canonical source: workspace `develop/4.docs/templates/CONVERSATION.md`. Each project keeps a verbatim copy at `<project>/.agents/CONVERSATION.md`. Edit the canonical file first, then re-copy it to every project; never edit a project copy alone.
@@ -33,7 +34,7 @@
 - Silence, elapsed time or a preselected recommendation is never approval.
 - Question card order: real question in the title -> option summaries -> short consequence per option (state reversibility) -> one-line recommendation. Never put a bare ID heading or bury the question after background.
 - Give each question a stable ID (`Q01`, `Q02`) so answers can cite it. Separate two or more questions with a `---` horizontal rule.
-- Select `<scope-notes>` using the project `.agents/NOTES.md` or workspace `4.docs/templates/NOTES.md`: exactly one stage uses that stage's notes; cross-stage work uses project notes; shared-workspace work uses workspace notes.
+- Select `<scope-notes>` using the project `.agents/NOTES.md` or workspace `4.docs/templates/NOTES.md`: all project notes use `docs/notes/`, regardless of stage; shared-workspace notes use `4.docs/notes/`. Never create stage-local notes folders.
 - Routing: one simple question stays in chat. Two or more questions, or one that requires relating two or more files or architecture elements, go into one discussion file `<scope-notes>/사람할일/대기중/DISC-<number>-<slug>.md`; on resume, read that file before asking. Human-only actions (browser checks, approval of recorded decisions, issue registration, uncommitted external changes) go into `<scope-notes>/사람할일/대기중/human-todo-<YYYY-MM-DD>.md` as `- [ ]` items with evidence links, linked from the current work report.
 
 ```markdown
