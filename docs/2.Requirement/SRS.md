@@ -1,3 +1,8 @@
+---
+rev: "00.01"
+rev_date: 2026-10-06
+---
+
 # IDMA(제출물 관리대장 자동화 시스템) 소프트웨어 요구사항 명세서 (SRS)
 
 ## 1. 개요
@@ -778,3 +783,15 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
   F027~F029, F037~F039)은 6장의 절 경계를 나타내며, 향후 같은 절에 요구사항을
   추가할 때 사용할 예비 번호다.
 - 비기능 요구사항(8건): SRS-N001~N008.
+
+## 개정 이력
+이 절은 공통 판 관리 도입과 이후 주요 개정의 이력을 기록한다.
+
+At adoption on 2026-10-06, `rev: "00.01"` mapped the current legacy text to the common revision
+contract without establishing approval or revalidating earlier evidence. The leading `rev`
+field identifies the current document revision. See the
+[adoption record](../notes/LLM작업/진행중/zip-document-adoption-2026-10-06.md).
+
+| 판 | 날짜 | 변경 요약 | 영향 요구 ID |
+|---|---|---|---|
+| 00.00 | 2026-10-06 | Initial management draft adoption; legacy history preserved, not approval. | None — metadata/path corrections only |
