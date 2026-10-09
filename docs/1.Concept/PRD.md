@@ -1,6 +1,6 @@
 ---
-rev: "00.01"
-rev_date: "2026-10-06"
+rev: "00.02"
+rev_date: "2026-10-09"
 ---
 
 # PRD — 제출물 관리대장 자동화 시스템 (IDMA)
@@ -221,7 +221,7 @@ duplicate.suffix_start:
 
 This table starts the new management revision scheme on 2026-10-06. `00.00` denotes this adoption's initial draft baseline, not a past revision or approval. At adoption on 2026-10-06, the text was assigned `00.01`; the current revision is the leading YAML `rev`. Any legacy versions, decisions and histories above remain valid historical records. No current-text agreement was established by this adoption, and existing agreements are not revoked. Earlier verification evidence remains unconfirmed for currentness until its input baseline is identified.
 
-Evidence, constraints and verification: [document adoption work note](../notes/LLM작업/진행/zip-document-adoption-2026-10-06.md).
+Evidence, constraints and verification: [document adoption work note](../notes/LLM작업/완료/zip-document-adoption-2026-10-06.md).
 
 | 판 | 날짜 | 변경 요약 | 영향 요구 ID |
 |---|---|---|---|
