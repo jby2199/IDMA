@@ -1,5 +1,5 @@
 ---
-rev: "00.05"
+rev: "00.06"
 rev_date: 2026-10-10
 ---
 
@@ -208,7 +208,8 @@ resolve한다. 현재 작업 디렉토리(CWD)를 기준으로 경로를 해석�
     디렉토리가 존재하고 읽기·쓰기 접근이 가능.
 (5) `rule.full_name_min_ratio`가 0.0 초과 1.0 이하, `ai.confidence_threshold`가
     0.0 이상 1.0 이하, `duplicate.suffix_start`가 1 이상의 정수.
-(6) `app.config.yaml`(8.2.1절)의 `watch.scan_interval_seconds`·`watch.file_stable_seconds`가
+(6) `app.config.yaml`(8.2.1절)이 존재하고 YAML 파싱에 성공하며,
+    `watch.scan_interval_seconds`·`watch.file_stable_seconds`(누락 시 기본값)가
     1 이상의 정수이고, `project_doc_info`의 4개 키가 모두 지정되었거나 모두 비어
     있으며, 지정된 경우 `path`의 xlsx 파일이 존재.
 6개 중 1개라도 실패하면 GUI 창을 열지 않고 감시를 시작하지 않으며, 어떤 파일도
@@ -256,7 +257,8 @@ abbr confidence 값(1.0)은 분류 알고리즘의 일부로 코드에 정의한
 찾는다. 이벤트 방식에서는 감시 시작 후 생성·수정된 파일이, 폴링 방식에서는 각
 주기 시점에 존재하는 직속 파일 전부가 후보가 된다. 후보 파일은 0.5초 간격 확인에서
 크기와 수정 시각이 `watch.file_stable_seconds`초 동안 변하지 않은 뒤에만 처리한다.
-같은 (절대경로, 크기, 수정 시각) 조합의 파일은 한 감시 세션에서 1회만 처리한다.
+같은 (절대경로, 크기, 수정 시각) 조합의 파일은 프로그램 실행 동안 1회만 처리하며,
+감시 세션을 중지했다가 다시 시작해도 이 기록은 유지된다.
 감시가 중지되면 안정화 대기 중인 후보는 처리하지 않는다.
 
 ### 6.3 Rule Engine
@@ -409,7 +411,7 @@ Rule 분류와 AI 분류가 모두 실패한 파일의 배치 경로는
 원본을 `source_root`에 보존한다. 이 파일의 상태는 `Error`로 기록한다.
 
 [SRS-F025] 시스템 오류 상태
-상위요건: <PRD-F013>, 설계 결정 (관리대장 행 기록 실패 시 되돌림, 부록 B)
+상위요건: <PRD-F013>, <PRD-N005>, 설계 결정 (관리대장 행 기록 실패 시 되돌림, 부록 B)
 시스템은 분류 실패가 아니라 시스템 오류(파일 접근 예외, 이동 실패, suffix 한도
 초과, 관리대장 행 기록 실패)가 발생한 경우에만 그 파일의 상태를 `Error`로
 기록한다. `Error` 상태의 파일은 이동하지 않고 `source_root`에 보존하며,
@@ -445,7 +447,7 @@ Rule 분류와 AI 분류가 모두 실패한 파일의 배치 경로는
 `status`, `error_message`. 각 컬럼의 값 도메인과 빈 값 규칙은 8.4절에 따른다.
 
 [SRS-F031] classification_method 기록값
-상위요건: <PRD-F014>, <PRD-N005>
+상위요건: <PRD-F014>, <PRD-N005>, <PRD-F019>
 `classification_method` 컬럼의 값은 `Rule-ABBR`, `Rule-FULL`, `AI`, `Fallback`
 4개 중 하나다. 이 외의 값은 기록하지 않는다. 값과 판정 경로의 대응은
 요구사항 <SRS-F011>, <SRS-F013>, <SRS-F016>, <SRS-F018>, <SRS-F022>에 정의한 바와 같다.
@@ -467,7 +469,10 @@ confidence 값을 소수점 둘째 자리까지 기록한다. `Rule-ABBR`, `Rule
 잠겨 있으면 감시를 시작하지 않고, 무GUI 모드에서는 종료 코드 2로 종료하며 GUI
 모드에서는 감시 상태를 중지로 둔다. 두 경우 모두 "관리대장을 닫은 뒤 다시 시작"을
 안내하는 메시지를 stderr(GUI 모드는 화면)와 로그에 기록한다. 감시 세션 중 잠김
-등으로 행 기록이 실패하면 <SRS-F025>를 따른다. 시스템은 관리대장의 기존 행·시트·수식·서식을 변경하지 않고, 지정된
+등으로 행 기록이 실패하면 <SRS-F025>를 따른다. 백업 뒤에는 대상 시트의 헤더
+행을 읽어 8.4절의 8개 컬럼명을 확인하며, 하나라도 없으면 감시를 시작하지 않고
+무GUI 모드에서는 종료 코드 1로 종료하며 GUI 모드에서는 감시 상태를 중지로 두고
+원인을 화면에 표시한다. 두 경우 모두 원인을 로그에 기록한다. 시스템은 관리대장의 기존 행·시트·수식·서식을 변경하지 않고, 지정된
 대상 시트의 마지막 데이터 행 아래에 새 행만 추가한다.
 
 ### 6.8 로그
@@ -482,7 +487,7 @@ Knowledge 파일 절대경로를 포함한다. 파일 단위 레코드는 원본
 fallback 여부(`is_fallback`, 불리언)를 포함한다.
 
 [SRS-F035] 매칭 근거 기록
-상위요건: <PRD-F018>, <PRD-N005>
+상위요건: <PRD-F018>, <PRD-N005>, <PRD-F019>
 `match_evidence` 필드는 판정 경로별로 다음을 포함한다.
 - `Rule-ABBR`(abbr 매치, <SRS-F011>): 매치된 abbr 문자열과 매치된 파일명 토큰.
 - `Rule-ABBR`(문서번호 매칭, <SRS-F018>): 매치된 문서번호, 그 행의 문서구분 값,
@@ -505,7 +510,7 @@ fallback 여부(`is_fallback`, 불리언)를 포함한다.
 ### 6.9 로컬 설정 UI
 
 [SRS-F040] UI 제공 항목
-상위요건: <PRD-F015>, <PRD-U004>
+상위요건: <PRD-F015>, <PRD-U004>, <PRD-F019>
 로컬 Python UI는 다음 11개 설정 항목의 조회·편집과 저장 동작을 제공한다:
 `project_root`, `roots.source_root`, `roots.phase_folders`,
 `rule.full_name_min_ratio`, `ai.confidence_threshold`, `fallback.enabled`,
@@ -647,7 +652,8 @@ Phase 폴더, `project_root` 직속, `source_root`(Fallback 비활성 또는 `Er
   경로(8.2.1절). 생략 시 각각 프로그램과 함께 배포된 `models` 폴더의 같은 이름
   파일을 쓴다. 설정 파일을 찾은 뒤의 모든 경로 해석은 <SRS-F003>에 따라
   `project_root` 기준이다.
-- 종료 코드: 0=정상 종료(감시 중단 포함), 1=사전 검증 실패 또는 설정 오류,
+- 종료 코드: 0=정상 종료(감시 중단 포함), 1=사전 검증 실패, 설정 오류 또는 무GUI
+  모드 감시 세션 시작 시 관리대장 헤더 누락(<SRS-F033>),
   2=감시 세션 시작 시 관리대장 접근 불가(잠김·권한, 무GUI 모드), 3=무GUI 모드의
   감시 세션 중 1건 이상의 파일이 `Error` 상태로 끝난 뒤 중단.
 - stdout: 무GUI 모드 중단 시 처리 요약(대상 건수, method별 건수, Error 건수).
@@ -699,7 +705,8 @@ watch:
 ```
 
 - 위 2개 키만 시스템 동작에 쓰며, 이 파일의 다른 키는 무시한다(<SRS-F009>).
-- 값이 1 미만이면 <SRS-F004> 항목 (6)이 실행을 차단한다.
+- 파일이 없거나 YAML 파싱에 실패하거나 값이 1 미만이면 <SRS-F004> 항목 (6)이
+  실행을 차단한다(종료 코드 1, 원인은 stderr와 로그).
 - 위 8개 필수 항목 외의 키는 무시하지 않고 그대로 보존해 저장한다(<SRS-F043>).
 
 ### 8.3 Knowledge 스키마 (`문서목록.json`)
@@ -743,7 +750,8 @@ watch:
 | `error_message` | 문자열 | 자유 텍스트 | 가능 | 분류 실패 사유 또는 시스템 오류 원인 |
 
 - 컬럼 식별은 헤더명 기준이다. 대상 시트의 헤더 행에 위 8개 이름이 모두
-  존재하지 않으면 <SRS-F004>가 실행을 차단한다.
+  존재하지 않으면 감시 세션 시작 시 <SRS-F033>이 세션을 시작하지 않는다(무GUI
+  모드 종료 코드 1, GUI 모드 중지 상태 유지).
 - `status`가 `Rule-Classified`·`AI-Classified`·`Fallback`인 중간 상태는 관리대장에
   기록하지 않는다. 관리대장에는 최종 상태만 기록한다(<SRS-F026>).
 
@@ -905,7 +913,7 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
 | 사전 검증 (4) 경로 대상 | `project_root`·`roots.source_root`는 디렉토리 자체, `workbook.path`는 상위 디렉토리 | 2026-10-09 명확화. <SRS-F042>의 존재 검사 대상과 일치 |
 | UI의 `workbook.path` | 편집 항목 아님 | 2026-10-09 명확화. <SRS-F040>·<PRD-F015>의 7개 항목에 맞춰 8.7절 화면 구성을 정렬 |
 | 처리 순서 | 감지 순서, 1건씩 직렬 | 2026-10-10 사용자 결정 Q02(상주 감시)로 1회 수집 집합이 없어져 파일명 오름차순을 대체. 직렬 처리는 기존 순차 처리 요구 유지(<SRS-F008>) |
-| 감시 방식·안정화 | watchdog 이벤트, 불가 시 폴링. 0.5초 간격 확인, 같은 (경로, 크기, 수정 시각)은 세션당 1회 | 2026-10-10 사용자 결정 Q02. 현행 코드 동작을 그대로 기술(<SRS-F009>) |
+| 감시 방식·안정화 | watchdog 이벤트, 불가 시 폴링. 0.5초 간격 확인, 같은 (경로, 크기, 수정 시각)은 프로그램 실행 동안 1회(세션 재시작으로 초기화되지 않음) | 2026-10-10 사용자 결정 Q02. 현행 코드 동작을 그대로 기술(<SRS-F009>) |
 | 문서번호 매칭 결과 표기 | `Rule-ABBR`, confidence 1.0, `match_evidence`로 구별 | 2026-10-10 사용자 결정 Q02. 현행 코드 표기를 유지하고 <SRS-F031> 값 도메인을 바꾸지 않음(<SRS-F018>, <SRS-F035>) |
 | AI 모델·API 선택 | SDD에서 구체화 | PRD가 구체 모델을 명시하지 않음. 본 SRS는 <SRS-F015>·<SRS-F017>·8.6절의 입출력 계약과 추상화 인터페이스만 고정하고, 구현체 선택은 설계 단계로 이관한다 |
 
@@ -951,3 +959,9 @@ approval.
   `<SRS-F042>`, `<SRS-F043>`, `<SRS-N007>`, §1, §2, §3, §5, §8.1, §8.2, §8.2.1, §8.5, §8.7,
   §9, appendices A–C. User decision Q07 "Q7 인정" accepts the `<SRS-N005>` exception; its
   text is unchanged and `<PRD-N005>` now states it.
+- `00.06` (2026-10-10): verification findings D-12–D-15 on `00.05`. `상위요건` lines aligned with
+  appendix A (`<SRS-F025>`, `<SRS-F031>`, `<SRS-F035>`, `<SRS-F040>`); the duplicate-suppression
+  record of `<SRS-F009>` now matches the code (once per program run, not reset by a new session);
+  missing or unparseable `app.config.yaml` blocks startup (`<SRS-F004>` item 6, §8.2.1); the ledger
+  header check moves from program start to session start with per-mode behavior (`<SRS-F033>`,
+  §8.1, §8.4). No user-intent change.
