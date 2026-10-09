@@ -1,5 +1,5 @@
 ---
-rev: "00.01"
+rev: "00.02"
 rev_date: "2026-10-09"
 ---
 
@@ -11,10 +11,10 @@ SRS 요구를 현행 `src/app` 패키지 구조 위의 컴포넌트·외부 경�
 
 This SAD is the final design document for IDMA. It describes the architecture structure (views `<SAD-W001>`, `<SAD-W002>`) and the hard-to-reverse decisions `<SAD-R001>`–`<SAD-R004>`. Implementation below this level is developer judgment within this SAD unless the user explicitly requests otherwise. `docs/3.Design/SDD.md` is not gate-checked; its planned package names (`knowledge/`, `config/`, `scanner.py`, ...) do not exist in the code and are not used here.
 
-- 상태: 초안 (`00.01`), 사용자 합의 근거 없음.
+- 상태: 초안 (`00.02`), 사용자 합의 근거 없음.
 - 범위: the `src/app` Python package — one CLI run process (`idma run`) and one local settings GUI process (`idma ui`) on a local Windows PC; the files they read and write (`ledger.config.yaml`, `문서목록.json`, `source_root`, Phase folders, `project_root`, ledger workbook, `logs/`); and the AI classifier contract boundary.
 
-Inputs: [PRD](../1.Concept/PRD.md) revision `00.01`, [SRS](../2.Requirement/SRS.md) revision `00.01`, and the code under `src/app` as of this revision.
+Inputs: [PRD](../1.Concept/PRD.md) revision `00.01`, [SRS](../2.Requirement/SRS.md) revision `00.02`, and the code under `src/app` as of this revision.
 
 Component placement follows the existing layering of `src/app`: `core/` holds domain types, protocols and use-case logic and imports no adapter; `adapters/` holds file, workbook, log, watcher and AI implementations; `models/` holds the runtime config model and default config files; `ui/` holds the Tkinter window; `main.py` assembles everything. The code was produced before the current SRS (see `docs/notes/LLM작업/완료/Codex 1차 자동빌드 결과물.md`) and deviates from it in several places. Those deviations are listed in `현행 코드 대응` under `<SAD-W001>` as implementation-stage work; this SAD follows the SRS wherever the two differ.
 
@@ -126,22 +126,27 @@ flowchart TB
         A["SAD-C001<br/>실행 진입·조립"] -->|경로| B["SAD-C002<br/>설정·Knowledge 적재"]
         B -->|설정·Knowledge 사본| C["SAD-C003<br/>사전 검증"]
         C -->|검증 결과| A
+        A -->|잠금 확인·백업| L["SAD-C009<br/>관리대장 기록"]
+        L -->|헤더 이름| C
         A -->|처리 시작| P["SAD-C005<br/>파일 처리 조정"]
     end
+    L -->|SAD-I005 잠금 확인·백업·헤더 읽기| WB[("관리대장 xlsx")]
     CF[("ledger.config.yaml")] -->|SAD-I002 읽기| B
     KF[("문서목록.json")] -->|SAD-I003 읽기 전용| B
     A -->|SAD-I001 요약·오류·종료 코드| U
     classDef process fill:#DBEAFE,stroke:#1D4ED8,color:#1E3A8A,stroke-width:1.5px;
     classDef data fill:#F3E8FF,stroke:#7E22CE,color:#581C87,stroke-width:1.5px;
     classDef neutral fill:#F1F5F9,stroke:#475569,color:#0F172A,stroke-width:1.5px;
-    class A,B,C,P process;
-    class CF,KF data;
+    class A,B,C,L,P process;
+    class CF,KF,WB data;
     class U neutral;
     style SYS fill:#F1F5F9,stroke:#64748B,color:#0F172A;
     linkStyle default stroke:#64748B,stroke-width:1.5px;
 ```
 
 범례: 파랑=컴포넌트, 보라=파일, 회색=사용자. 실선=정보 전달.
+
+Run start order: (1) `<SAD-C002>` loads config and Knowledge; (2) `<SAD-C003>` checks `<SRS-F004>` items 1–5; (3) `<SAD-C009>` checks the workbook lock (exit 2 if locked); (4) `<SAD-C009>` backs up the workbook; (5) `<SAD-C009>` reads the header row and `<SAD-C003>` checks the 8 header names (exit 1 if missing); (6) `<SAD-C004>` scans. No file moves before step 6. Under `--dry-run`, steps 3–4 are skipped and step 5 reads the header row read-only, because nothing is written.
 
 #### FIG-SAD-002 · 파일 1건 처리
 처리 조정 컴포넌트가 탐색·분류·배치·기록 컴포넌트를 순서대로 호출하고 각 외부 저장소와 만나는 지점을 보인다.
@@ -181,16 +186,16 @@ flowchart TB
 [SAD-C001] 실행 진입·조립
 구현요건: `<SRS-F004>`, `<SRS-F025>`, `<SRS-N008>`
 Process entry point. Parses the `idma run` / `idma ui` command line, locates `ledger.config.yaml`, wires core and adapter components, starts one run and maps the run outcome to the exit code.
-- 책임: CLI parsing (`<SAD-I001>`); dependency assembly; blocking the run with exit code 1 when `<SAD-C003>` reports any failure; exit code 2 when `<SAD-C009>` reports the workbook inaccessible; exit code 3 when any file ended in `Error`; printing the summary to stdout and every cause message to stderr; launching `<SAD-C011>` for `idma ui`
+- 책임: CLI parsing (`<SAD-I001>`); dependency assembly; enforcing the run start order above; passing the `--dry-run` mode to `<SAD-C005>` and `<SAD-C009>`; blocking the run with exit code 1 when `<SAD-C003>` reports any failure; exit code 2 when `<SAD-C009>` reports the workbook inaccessible; exit code 3 when any file ended in `Error`; printing the summary to stdout and every cause message to stderr (stderr only when the config cannot be loaded, since the log location is unknown); launching `<SAD-C011>` for `idma ui`
 - 비책임: file classification (`<SAD-C006>`), per-file orchestration (`<SAD-C005>`), validation rules (`<SAD-C003>`)
 - 현행 모듈: `src/app/main.py`
 ```
 
 ```
 [SAD-C002] 설정·Knowledge 적재
-구현요건: `<SRS-F001>`, `<SRS-F002>`, `<SRS-F003>`, `<SRS-F005>`, `<SRS-F006>`
+구현요건: `<SRS-F001>`, `<SRS-F002>`, `<SRS-F003>`, `<SRS-F005>`, `<SRS-F006>`, `<SRS-F043>`
 Loads `ledger.config.yaml` into the runtime config model and `문서목록.json` into an in-memory Knowledge copy once per run, and owns the single path-resolution rule.
-- 책임: YAML/JSON parsing into immutable models; resolving every relative path against `project_root` (and a relative `project_root` against the config file directory); writing `ledger.config.yaml` only on behalf of `<SAD-C011>` after validation, preserving keys outside the 8 required ones; exposing all thresholds, policies, Phases and artifacts from files rather than code constants
+- 책임: YAML/JSON parsing into immutable models; resolving every relative path against `project_root` (and a relative `project_root` against the config file directory); writing `ledger.config.yaml` only on behalf of `<SAD-C011>` after validation, by writing a temporary file and then replacing the original, preserving keys outside the 8 required ones; exposing all thresholds, policies, Phases and artifacts from files rather than code constants
 - 비책임: validating values (`<SAD-C003>`); any write, rename or delete of `문서목록.json` (no such operation exists); caching Knowledge outside the process
 - 현행 모듈: `src/app/adapters/config_loader.py`, `src/app/models/config_schema.py`
 ```
@@ -199,8 +204,8 @@ Loads `ledger.config.yaml` into the runtime config model and `문서목록.json`
 [SAD-C003] 사전 검증
 구현요건: `<SRS-F004>`, `<SRS-F042>`
 Owns the configuration and Knowledge validation rule set used before a run and before a UI save.
-- 책임: the 5 ordered pre-run checks of `<SRS-F004>` (config keys, Knowledge schema and abbr uniqueness, Phase key set equality, path existence/access, value ranges) plus the ledger header check of SRS §8.4; the save-time checks of `<SRS-F042>`; returning every failed item with its cause
-- 비책임: deciding exit codes or showing messages (`<SAD-C001>`, `<SAD-C011>`); loading files (`<SAD-C002>`)
+- 책임: the 5 ordered pre-run checks of `<SRS-F004>` (config keys, Knowledge schema and abbr uniqueness, Phase key set equality, path existence/access, value ranges) plus the ledger header check of SRS §8.4 on header names supplied by `<SAD-C009>` (run start step 5); the save-time checks of `<SRS-F042>`; returning every failed item with its cause
+- 비책임: deciding exit codes or showing messages (`<SAD-C001>`, `<SAD-C011>`); loading config and Knowledge (`<SAD-C002>`); opening the workbook (`<SAD-C009>`)
 - 현행 모듈: `src/app/core/validation.py`
 ```
 
@@ -217,7 +222,7 @@ Collects processing targets from `source_root` once per run.
 [SAD-C005] 파일 처리 조정
 구현요건: `<SRS-F008>`, `<SRS-F022>`, `<SRS-F023>`, `<SRS-F025>`, `<SRS-F026>`, `<SRS-F031>`, `<SRS-F032>`
 Use case that drives one file through classify -> place -> ledger -> log and owns the per-file state.
-- 책임: sequential processing where one file's exception becomes that file's `Error` and processing continues; the state paths of `<SRS-F026>`; choosing Phase folder, `project_root` (Fallback) or leave-in-place (`fallback.enabled=false`, `Error`); building the final ledger row (`classification_method` domain, `ai_confidence` only for `AI`, empty `phase`/`artifact_abbr` for Fallback); writing `Filed` only after a successful move
+- 책임: sequential processing where one file's exception becomes that file's `Error` and processing continues; the state paths of `<SRS-F026>`; choosing Phase folder, `project_root` (Fallback) or leave-in-place (`fallback.enabled=false`, `Error`); building the final ledger row (`classification_method` domain, `ai_confidence` only for `AI`, empty `phase`/`artifact_abbr` for Fallback); writing `Filed` only after a successful move; when the ledger row write fails after a move, asking `<SAD-C008>` to move the file back to its `source_root` path and recording `Error` in the file log record only (`<SRS-F025>`); under `--dry-run`, calling neither `<SAD-C008>` nor the row append of `<SAD-C009>` and printing each decision and planned path to stdout
 - 비책임: matching rules (`<SAD-C006>`), filesystem operations (`<SAD-C008>`), workbook I/O (`<SAD-C009>`), log formatting (`<SAD-C010>`)
 - 현행 모듈: `src/app/core/usecases.py` (types in `src/app/core/entities.py`)
 ```
@@ -244,7 +249,7 @@ Single abstract AI classifier contract and its pluggable implementation.
 [SAD-C008] 파일 배치
 구현요건: `<SRS-F020>`, `<SRS-F021>`, `<SRS-F022>`, `<SRS-F024>`
 Moves one file to its decided directory without overwriting or losing it.
-- 책임: creating the target directory; move (not copy) keeping the original name; `_<n>` duplicate suffix from `duplicate.suffix_start` up to `suffix_start + 999`; leaving no partial copy and keeping the original in `source_root` on any move failure; returning the final absolute path or the failure cause
+- 책임: creating the target directory; move (not copy) keeping the original name; `_<n>` duplicate suffix from `duplicate.suffix_start` up to `suffix_start + 999`; leaving no partial copy and keeping the original in `source_root` on any move failure; moving a file back to its original `source_root` path on request from `<SAD-C005>`; returning the final absolute path or the failure cause
 - 비책임: choosing the target directory (`<SAD-C005>`); ledger or log writes (`<SAD-C009>`, `<SAD-C010>`)
 - 현행 모듈: `src/app/adapters/file_ops.py`
 ```
@@ -253,7 +258,7 @@ Moves one file to its decided directory without overwriting or losing it.
 [SAD-C009] 관리대장 기록
 구현요건: `<SRS-F030>`, `<SRS-F033>`
 Appends final result rows to the existing ledger workbook.
-- 책임: backing up the workbook to `project_root/backup/<name>_<run_id>.xlsx` before opening; detecting an exclusive lock and reporting it before any file moves (exit code 2 via `<SAD-C001>`); locating the 8 columns by header name; appending rows below the last data row without changing existing rows, sheets, formulas or formats
+- 책임: in run start order, checking the exclusive lock, then backing up the workbook to `project_root/backup/<name>_<run_id>.xlsx` before opening it, then reading the header row for `<SAD-C003>`; a lock is reported before any file moves (exit code 2 via `<SAD-C001>`); locating the 8 columns by header name; appending rows below the last data row without changing existing rows, sheets, formulas or formats; loading the workbook once per run and saving after each appended row, so a save failure affects only that file; under `--dry-run`, no lock check, backup or write (header read only)
 - 비책임: deciding row values (`<SAD-C005>`); creating or repairing headers or sheets (a missing header blocks the run in `<SAD-C003>`)
 - 현행 모듈: `src/app/adapters/excel_repo.py`
 ```
@@ -275,8 +280,8 @@ Writes run-level and file-level JSON Lines records.
 구현요건: `<SRS-F004>`, `<SRS-F007>`, `<SRS-F025>`, `<SRS-F033>`, `<SRS-N008>`
 `idma run [--config <path>] [--dry-run]`, `idma ui [--config <path>]` (SRS §8.1)
 - 입력: optional config path; when omitted, `ledger.config.yaml` in the CWD is used only to locate the file, never as a path base
-- 출력: stdout summary (target count, count per method, `Error` count); `--dry-run` prints decisions and planned paths only and moves no file, writes no ledger row and saves no config, but still logs
-- 실패 시 동작: exit 0 = normal (including 0 targets); 1 = pre-run validation or config failure, before any move; 2 = ledger workbook locked or not accessible, before any move; 3 = at least one file ended in `Error`. Every non-zero exit writes a cause message to stderr and the log
+- 출력: stdout summary (target count, count per method, `Error` count); `--dry-run` prints decisions and planned paths only and moves no file, writes no ledger row, makes no ledger backup and saves no config, but still logs
+- 실패 시 동작: exit 0 = normal (including 0 targets); 1 = pre-run validation or config failure, before any move; 2 = ledger workbook locked or not accessible, before any move; 3 = at least one file ended in `Error`. Every non-zero exit writes a cause message to stderr and the log, except when the config file is missing or unparseable: `project_root` is then unknown and the message goes to stderr only (`<SRS-F004>`, `<SRS-N008>`)
 ```
 
 ```
@@ -310,9 +315,9 @@ Local or network/OneDrive-synced directories: `source_root` (read, move-out), Ph
 [SAD-I005] 관리대장 워크북 경계
 구현요건: `<SRS-F030>`, `<SRS-F033>`
 xlsx workbook at `workbook.path`, target sheet `workbook.sheet` (default `관리대장`), 8 header-named columns (SRS §8.4)
-- 입력: existing workbook with the 8 headers present
+- 입력: existing workbook with the 8 headers present; access order: lock check, backup, header read, row appends
 - 출력: backup copy under `project_root/backup`; appended rows with final states only (`Ready`, `Filed`, `Error`)
-- 실패 시 동작: exclusive lock -> exit 2 with a "close the ledger and re-run" message, no file moved; missing headers -> exit 1 via `<SAD-C003>`; a per-row write failure marks that file `Error`
+- 실패 시 동작: exclusive lock -> exit 2 with a "close the ledger and re-run" message, no file moved; missing headers -> exit 1 via `<SAD-C003>`; a per-row write failure moves that file back to `source_root`, marks it `Error` and records the result in the log only (`<SRS-F025>`)
 ```
 
 ```
@@ -364,14 +369,14 @@ Zero AI calls for files outside the 3 call conditions; Rule placement works with
 [SAD-Q004] 파일 무유실
 구현요건: `<SRS-N004>`, `<SRS-F024>`
 Every target file exists in exactly one of 3 locations after the run.
-- 구조적 수단: `<SAD-C008>` moves only after all decisions are final and never leaves partial copies; `<SAD-C005>` writes `Filed` only after a successful move; `<SAD-C009>` lock detection happens before any move
+- 구조적 수단: `<SAD-C008>` moves only after all decisions are final and never leaves partial copies; `<SAD-C005>` writes `Filed` only after a successful move; `<SAD-C009>` lock detection happens before any move; a ledger write failure moves the file back to `source_root`
 - 확인 방법: regression test for normal, Rule failure, AI failure and move exception scenarios comparing file counts and content hashes before and after
 ```
 
 ```
 [SAD-Q005] 감사 추적성
 구현요건: `<SRS-N005>`, `<SRS-F030>`, `<SRS-F034>`
-Ledger row count = log file-record count = target count, each with method and evidence.
+Ledger row count = log file-record count = target count, each with method and evidence; files whose ledger row write failed are excluded from the ledger count and appear as `Error` file records in the log (`<SRS-N005>`).
 - 구조적 수단: `<SAD-C005>` emits exactly one final row to `<SAD-C009>` and one file record to `<SAD-C010>` per target, both carrying `<SAD-C006>` evidence
 - 확인 방법: regression test comparing counts and checking `classification_method`/`match_evidence` presence
 ```
@@ -388,36 +393,36 @@ Ledger row count = log file-record count = target count, each with method and ev
 [SAD-Q007] 처리 성능
 구현요건: `<SRS-N007>`
 ≤ 1 s per file excluding AI; 200 artifacts × 100 files in ≤ 60 s excluding AI, on local disk.
-- 구조적 수단: Knowledge and config load once per run (`<SAD-C002>`); the workbook is opened once per run by `<SAD-C009>` rather than per row; Rule matching is in-memory
+- 구조적 수단: Knowledge and config load once per run (`<SAD-C002>`); the workbook is loaded once per run by `<SAD-C009>` (saved after each row) rather than reopened per row; Rule matching is in-memory
 - 확인 방법: timed run with a 200-artifact Knowledge and 100 input files and a stub AI
 ```
 
 ```
 [SAD-Q008] 오류 보고 완결성
 구현요건: `<SRS-N008>`, `<SRS-F025>`
-Every non-zero exit and every `Error` file has a cause message in stderr and the log.
+Every non-zero exit and every `Error` file has a cause message in stderr and the log; a config load failure reports to stderr only.
 - 구조적 수단: `<SAD-C001>` converts all run-level exceptions into exit codes with messages; `<SAD-C005>` records exception type and message in `error_message` and the file log record
-- 확인 방법: tests per exit code 1/2/3 checking stderr and log contain a cause message, not only a traceback
+- 확인 방법: tests per exit code 1/2/3 checking stderr and log contain a cause message, not only a traceback; for a missing or unparseable config, checking stderr only
 ```
 
 #### 현행 코드 대응
 SRS와 다른 현행 코드와 SRS 밖 현행 코드를 impl 단계 작업으로 기록한다.
 
-The table records observed deviations of `src/app` from this SAD. They are implementation-stage work, not design alternatives.
+The table records deviations of `src/app` from this SAD observed in the design review. It is not exhaustive: impl-stage work is scoped by the SRS and this SAD, not by this table alone. Deviations are implementation-stage work, not design alternatives.
 
 | SAD 항목 | 현행 코드 | SRS 대비 차이 |
 |---|---|---|
-| `<SAD-C001>` | `main.py` | CLI is `--nogui`, `--ledger-config`, `--app-config`, `--knowledge`; no `run`/`ui` subcommands, no `--dry-run`, no exit codes 1/2/3 (exceptions propagate); GUI mode starts a resident watcher |
-| `<SAD-C002>` | `config_loader.py`, `config_schema.py` | Knowledge read as nested `phases[].artifacts[]`, not SRS §8.3 `artifacts[]`; also loads `app.config.yaml` (watch settings); missing keys get defaults (e.g. `ai.confidence_threshold` 0.8) instead of blocking; `source_root` is used as given without `project_root` resolution; save writes a fixed key set |
-| `<SAD-C003>` | `core/validation.py` | `full_name_min_ratio` accepts 0.0; no abbr uniqueness, access-right or ledger header check; requires Phase folders to exist (SRS creates them) |
+| `<SAD-C001>` | `main.py` | CLI is `--nogui`, `--ledger-config`, `--app-config`, `--knowledge`; no `run`/`ui` subcommands, no `--dry-run`, no exit-code mapping (an unhandled exception ends with Python's default code 1); `--nogui` starts the resident watcher immediately, GUI mode starts it from the "감시 시작" button; default config and Knowledge paths point into the bundled `models/` folder and the Knowledge default name is `문서 목록.json` (with a space); a preflight failure raises before the UI opens |
+| `<SAD-C002>` | `config_loader.py`, `config_schema.py` | Knowledge read as nested `phases[].artifacts[]`, not SRS §8.3 `artifacts[]`; Knowledge path comes from `--knowledge`, not resolved against `project_root`; also loads `app.config.yaml` (watch settings); missing keys get defaults (e.g. `ai.confidence_threshold` 0.8) instead of blocking; a relative `project_root` resolves against the CWD, not the config file directory; `source_root` is used as given without `project_root` resolution; `workbook.sheet` is ignored and the sheet name comes from `ledgers.submission.sheet_name` (default `제출물 관리대장`); save writes a fixed key set by direct overwrite |
+| `<SAD-C003>` | `core/validation.py` | `full_name_min_ratio` accepts 0.0; requires `source_root` to be absolute; no config key completeness, abbr uniqueness, access-right or ledger header check; requires Phase folders to exist (SRS creates them) |
 | `<SAD-C004>` | `adapters/file_watcher.py` | watchdog/polling resident watcher with stabilization; no one-shot ordered scan |
 | `<SAD-C005>` | `core/usecases.py` | `fallback.enabled=false` raises and yields `Error` instead of `Ready`; Fallback rows store `phase`/`artifact_abbr` = `Fallback`; `Error` rows are not appended to the ledger |
-| `<SAD-C006>` | `core/rule_engine.py` | tokenizer splits on every non-ASCII-alphanumeric character instead of the `<SRS-F010>` delimiter set; condition 3 of `<SRS-F014>` (Rule-FULL below AI threshold) not applied; adoption conditions 2–3 of `<SRS-F016>` not checked; no `match_evidence` |
-| `<SAD-C007>` | `ai_client.py` | stub only; 30 s timeout not enforced |
+| `<SAD-C006>` | `core/rule_engine.py` | tokenizer splits on every non-ASCII-alphanumeric character instead of the `<SRS-F010>` delimiter set; 2+ abbr matches continue to full_name matching instead of going to AI; condition 3 of `<SRS-F014>` (Rule-FULL below AI threshold) not applied; adoption conditions 2–3 of `<SRS-F016>` not checked; no `match_evidence`; the project document classifier runs before Rule and records its result as `Rule-ABBR` |
+| `<SAD-C007>` | `core/entities.py`, `ai_client.py` | contract is `classify(filename, knowledge)`, not SRS §8.6 `classify(filename, artifacts)`; stub only; 30 s timeout not enforced; an AI exception is not caught and ends the file as `Error` instead of Fallback |
 | `<SAD-C008>` | `adapters/file_ops.py` | copies (`shutil.copy2`), original stays in `source_root`; no suffix upper bound |
-| `<SAD-C009>` | `adapters/excel_repo.py` | no backup; lock handled by 3 retries then exception, no exit 2; creates workbook, sheet and missing headers (changes structure) |
+| `<SAD-C009>` | `adapters/excel_repo.py` | no backup; lock handled by 3 retries then exception, no exit 2; creates workbook, sheet and missing headers (changes structure); columns differ from SRS §8.4 (`제출물명`, `제출물 형태`, `접수일` + `processed_at`, no `original_filename`); opens and saves the workbook for every row |
 | `<SAD-C010>` | `adapters/logger.py` | file name `submission_automation_<YYYYMMDD>.jsonl`; event records without `run_id`, `type` or `match_evidence`; write failure is not caught |
-| `<SAD-C011>` | `ui/settings_window.py` | saves by direct overwrite; no `<SRS-F042>` validation before save; also hosts watcher start/stop and tray icon |
+| `<SAD-C011>` | `ui/settings_window.py` | saves by direct overwrite; no `<SRS-F042>` validation before save; no folder picker; no add/delete of `roots.phase_folders` rows; out-of-SRS log dashboard tab; also hosts watcher start/stop and tray icon |
 | none | `adapters/project_doc_classifier.py` | project document-number lookup in an external xlsx before Rule; not defined in the SRS |
 | none | `core/phase_resolver.py`, `core/logic.py`, `utils/helpers.py`, `adapters/adapter_example.py`, `models/model_example.py` | unused or template sample code; no SRS counterpart |
 
@@ -462,7 +467,7 @@ flowchart TB
 [SAD-C011] 설정 UI
 구현요건: `<SRS-F040>`, `<SRS-F041>`, `<SRS-F042>`, `<SRS-F043>`
 Local Tkinter window started by `idma ui`; edits Runtime Config only.
-- 책임: view/edit of the 7 items of `<SRS-F040>` (path fields with direct input and folder picker; Phase mapping table with add/delete/edit); calling `<SAD-C003>` before save and showing each failed item; delegating the save to `<SAD-C002>`; optional read-only display of Knowledge
+- 책임: view/edit of the 7 items of `<SRS-F040>` (`workbook.path` is not editable, SRS §8.7) (path fields with direct input and folder picker; Phase mapping table with add/delete/edit); calling `<SAD-C003>` before save and showing each failed item; delegating the save to `<SAD-C002>`; optional read-only display of Knowledge
 - 비책임: any Knowledge edit control or write; running classification (`<SAD-C001>`); validation rules (`<SAD-C003>`); file format and atomic replace (`<SAD-C002>`)
 - 현행 모듈: `src/app/ui/settings_window.py`
 ```
@@ -484,7 +489,7 @@ Local GUI window (SRS §8.7); no web server or remote access
 
 ```
 [SAD-X001] 런타임 구조 뷰·설정 편집 뷰 검증 범위 차이
-`<SAD-C003>` applies the 5-item pre-run set of `<SRS-F004>` in `<SAD-W001>` but the save-time set of `<SRS-F042>` in `<SAD-W002>`. The save-time set does not check Knowledge schema details, abbr uniqueness or access rights, and requires `source_root` to exist while the pre-run set requires its parent directory to exist.
+`<SAD-C003>` applies the 5-item pre-run set of `<SRS-F004>` plus the SRS §8.4 header check in `<SAD-W001>`, but the save-time set of `<SRS-F042>` in `<SAD-W002>`. Both sets require `project_root` and `source_root` themselves and the parent of `workbook.path` to exist (SRS `00.02` clarification of `<SRS-F004>` item 4). The save-time set does not check config key completeness, Knowledge schema details, abbr uniqueness, read/write access rights or the ledger headers.
 - 영향: a config the UI accepts can still be blocked by the next `idma run` (exit 1).
 - 해소 계획: intentionally kept; both rule sets come from the SRS and the run-time check remains the final safeguard. Aligning them needs an SRS change.
 ```
@@ -494,7 +499,7 @@ Local GUI window (SRS §8.7); no web server or remote access
 
 The structure keeps the existing `core/` (domain logic and protocols, no adapter imports) versus `adapters/` (file, workbook, log, AI implementations) split of `src/app`. That split lets the Rule Engine stay deterministic and lets the AI implementation, workbook library or log format change without touching `core/`. Component internals, library choices and test layout are developer judgment.
 
-All four decisions restate constraints already fixed by SRS revision `00.01` (§5.2, §5.3, §8.2–§8.6, §9); none adds a requirement.
+All four decisions restate constraints already fixed by SRS revision `00.02` (§5.2, §5.3, §8.2–§8.6, §9); none adds a requirement.
 
 ```
 [SAD-R001] Knowledge와 Runtime Config를 두 파일로 분리하고 Knowledge는 읽기 전용
@@ -562,7 +567,7 @@ SRS 요구 42건과 이해관계자·관심사가 SAD 항목에 모두 연결됨
 | `<SRS-F022>` | `<SAD-C005>`, `<SAD-C008>`, `<SAD-I004>` |
 | `<SRS-F023>` | `<SAD-C005>`, `<SAD-I004>` |
 | `<SRS-F024>` | `<SAD-C008>`, `<SAD-I004>`, `<SAD-Q004>` |
-| `<SRS-F025>` | `<SAD-C001>`, `<SAD-C005>`, `<SAD-I001>`, `<SAD-Q008>` |
+| `<SRS-F025>` | `<SAD-C001>`, `<SAD-C005>`, `<SAD-I001>`, `<SAD-I005>`, `<SAD-Q008>` |
 | `<SRS-F026>` | `<SAD-C005>` |
 | `<SRS-F030>` | `<SAD-C009>`, `<SAD-I005>`, `<SAD-Q005>`, `<SAD-R003>` |
 | `<SRS-F031>` | `<SAD-C005>` |
@@ -574,7 +579,7 @@ SRS 요구 42건과 이해관계자·관심사가 SAD 항목에 모두 연결됨
 | `<SRS-F040>` | `<SAD-C011>`, `<SAD-I008>` |
 | `<SRS-F041>` | `<SAD-C011>`, `<SAD-I008>`, `<SAD-Q006>` |
 | `<SRS-F042>` | `<SAD-C003>`, `<SAD-C011>`, `<SAD-I008>` |
-| `<SRS-F043>` | `<SAD-C011>`, `<SAD-I002>` |
+| `<SRS-F043>` | `<SAD-C002>`, `<SAD-C011>`, `<SAD-I002>` |
 | `<SRS-N001>` | `<SAD-Q001>` |
 | `<SRS-N002>` | `<SAD-Q002>`, `<SAD-R001>` |
 | `<SRS-N003>` | `<SAD-Q003>`, `<SAD-R004>` |
