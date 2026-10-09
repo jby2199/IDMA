@@ -1,6 +1,6 @@
 ---
-rev: "00.03"
-rev_date: 2026-10-09
+rev: "00.04"
+rev_date: 2026-10-10
 ---
 
 # IDMA(제출물 관리대장 자동화 시스템) 소프트웨어 요구사항 명세서 (SRS)
@@ -195,8 +195,9 @@ resolve한다. 현재 작업 디렉토리(CWD)를 기준으로 경로를 해석�
     0.0 이상 1.0 이하, `duplicate.suffix_start`가 1 이상의 정수.
 5개 중 1개라도 실패하면 어떤 파일도 이동하지 않고 관리대장도 갱신하지 않은 채
 종료 코드 1로 실행을 차단하며, 실패한 검증 항목 번호와 원인 메시지를 stderr와
-로그에 기록한다. 단, 항목 (1)이 실패해 `project_root`를 확정할 수 없는 경우에는
-로그 위치(<SRS-F036>)를 알 수 없으므로 원인 메시지를 stderr에만 기록한다.
+로그에 기록한다. 단, 설정 파일을 찾지 못하거나 항목 (1)이 실패해(파싱 실패 또는
+`project_root` 키 누락 등) `project_root`를 확정할 수 없는 경우에는 로그
+위치(<SRS-F036>)를 알 수 없으므로 원인 메시지를 stderr에만 기록한다.
 
 [SRS-F005] Knowledge 재로드
 상위요건: <PRD-A007>, <PRD-U005>
@@ -361,7 +362,7 @@ Rule 분류와 AI 분류가 모두 실패한 파일의 배치 경로는
 원본을 `source_root`에 보존한다. 이 파일의 상태는 `Error`로 기록한다.
 
 [SRS-F025] 시스템 오류 상태
-상위요건: <PRD-F013>
+상위요건: <PRD-F013>, 설계 결정 (관리대장 행 기록 실패 시 되돌림, 부록 B)
 시스템은 분류 실패가 아니라 시스템 오류(파일 접근 예외, 이동 실패, suffix 한도
 초과, 관리대장 행 기록 실패)가 발생한 경우에만 그 파일의 상태를 `Error`로
 기록한다. `Error` 상태의 파일은 이동하지 않고 `source_root`에 보존하며,
@@ -542,8 +543,9 @@ AI 분류 호출을 제외한 파일 1건당 처리 시간(탐색·Rule 판정·
 [SRS-N008] 오류 보고 완결성
 상위요건: 설계 결정 (<SRS-F004>, <SRS-F025> 오류 경로 대응)
 0이 아닌 종료 코드로 끝나는 모든 실행과, `status`가 `Error`인 모든 파일은
-원인 메시지를 stderr와 로그에 남긴다. 설정 파일을 찾지 못하거나 파싱에 실패해
-`project_root`를 확정할 수 없는 실행은 원인 메시지를 stderr에만 남긴다(<SRS-F004>).
+원인 메시지를 stderr와 로그에 남긴다. 단, <SRS-F004>에 따라 `project_root`를
+확정할 수 없는 실행(설정 파일 없음, 파싱 실패, `project_root` 키 누락 등)은 원인
+메시지를 stderr에만 남긴다.
 스택 트레이스만 출력하고 원인 메시지 없이
 끝나는 실패 경로는 존재하지 않는다.
 
@@ -787,7 +789,7 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
 | 성능 목표 | 파일 1건당 1초, 100건 60초(AI 제외) | PRD에 성능 근거 없음. 로컬 디스크 파일 이동과 워크북 행 추가의 실측 가능한 상한으로 설정(<SRS-N007>) |
 | `--dry-run` 시 관리대장 백업 | 수행하지 않음 | 2026-10-09 명확화. `--dry-run`은 관리대장을 갱신하지 않으므로 백업할 쓰기가 없다(8.1절, <SRS-F033>) |
 | 관리대장 행 기록 실패 처리 | 이동한 파일을 `source_root`로 되돌리고 `Error`, 결과는 로그에만 기록 | 2026-10-09 명확화. 이동 후 행 기록 순서(<SRS-F024>)와 `Error` 파일의 `source_root` 보존(<SRS-F025>)을 함께 만족시키고, 행 수 대조 예외를 <SRS-N005>에 명시 |
-| 설정 적재 실패 시 오류 보고 위치 | stderr 전용 | 2026-10-09 명확화. `project_root`를 확정할 수 없으면 로그 위치(<SRS-F036>)가 정해지지 않는다(<SRS-F004>, <SRS-N008>) |
+| `project_root` 확정 불가 시 오류 보고 위치 | stderr 전용 | 2026-10-09 명확화, 2026-10-10 범위 정렬(설정 파일 없음·파싱 실패·키 누락). `project_root`를 확정할 수 없으면 로그 위치(<SRS-F036>)가 정해지지 않는다(<SRS-F004>, <SRS-N008>) |
 | 사전 검증 (4) 경로 대상 | `project_root`·`roots.source_root`는 디렉토리 자체, `workbook.path`는 상위 디렉토리 | 2026-10-09 명확화. <SRS-F042>의 존재 검사 대상과 일치 |
 | UI의 `workbook.path` | 편집 항목 아님 | 2026-10-09 명확화. <SRS-F040>·<PRD-F015>의 7개 항목에 맞춰 8.7절 화면 구성을 정렬 |
 | 처리 순서 | 파일명 오름차순 | 실행 재현성 확보. 동일 입력에 대해 관리대장 행 순서가 동일하도록 함(<SRS-F008>) |
@@ -812,3 +814,16 @@ field identifies the current document revision. See the
 | 판 | 날짜 | 변경 요약 | 영향 요구 ID |
 |---|---|---|---|
 | 00.00 | 2026-10-06 | Initial management draft adoption; legacy history preserved, not approval. | None — metadata/path corrections only |
+
+Draft minor revisions are not table rows: under the revision contract
+(`.claude/skills/by-orchestration/references/requirements-evidence.md`), the table lists major
+revisions only and minor revisions update the frontmatter. They are recorded here instead; none is an
+approval.
+
+- `00.01` (2026-10-06): adoption text assigned to the revision contract; no requirement meaning change.
+- `00.02` (2026-10-09): design-review clarifications D-02, D-04, D-06, D-07, D-08 (rows dated 2026-10-09
+  in appendix B). Affected: `<SRS-F004>`, `<SRS-F025>`, `<SRS-N005>`, `<SRS-N008>`, §8.1, §8.7.
+- `00.03` (2026-10-09): adoption-record link path updated (commit `104a2c6`); no requirement meaning change.
+- `00.04` (2026-10-10): stderr-only scope aligned between `<SRS-F004>` and `<SRS-N008>` (any case where
+  `project_root` cannot be determined); `설계 결정` marker added to `<SRS-F025>`. Affected:
+  `<SRS-F004>`, `<SRS-N008>`, `<SRS-F025>`.
