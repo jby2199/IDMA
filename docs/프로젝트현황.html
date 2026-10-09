@@ -9,7 +9,7 @@
 {
  "code": "IDMA",
  "name": "입력문서관리기",
- "asof": "2026-10-09 22:06",
+ "asof": "2026-10-10 07:19",
  "note": "게이트는 기존 판정 기록, 재실행 X · 문서·이슈·사람할일 재집계",
  "up": "../../4.docs/프로젝트 전체현황.html",
  "stage": "구현",
@@ -165,7 +165,6 @@ body.embedded .uplink{display:none}
 var D=JSON.parse(document.getElementById('status').textContent);
 var NAME={U:'내 차례',A:'진행',X:'미착수','?':'모름',O:'끝','-':'해당없음'};
 var CLS={U:'U',A:'A',X:'X','?':'Q',O:'O','-':'N'};
-var STALE=3; // 이 일수 이상 지나면 오래된 데이터 경고
 var open=decodeURIComponent(location.hash.slice(1))||null;
 var embedded=window.parent!==window;
 document.body.classList.toggle('embedded',embedded);
@@ -190,7 +189,7 @@ function st(s,txt){return '<span class="st s'+CLS[s]+'">'+esc(txt||NAME[s])+'</s
 function days(s){var m=/(\d{4})-(\d\d)-(\d\d)(?: (\d\d):(\d\d))?/.exec(s||'');if(!m)return null;
   return Math.floor((Date.now()-new Date(+m[1],m[2]-1,+m[3],+(m[4]||0),+(m[5]||0)))/86400000)}
 function ageHtml(s){var d=days(s);if(d==null)return '<span class="age old">기준 시각 없음</span>';
-  return '<span class="age'+(d>=STALE?' old':'')+'" title="기준 '+esc(s)+'">'+(d<=0?'오늘 기준':d+'일 전 데이터')+'</span>'}
+  return '<span class="age" title="마지막 변경 '+esc(s)+'">'+(d<=0?'오늘 변경':d+'일 전 변경')+'</span>'}
 function pct(n,m){return Math.floor(n/m*100)}
 function gauge(n,m,s){return '<div class="gauge" style="--c:'+(s==='U'||s==='A'||s==='O'?col(s):'var(--X)')+'"><i style="width:'+pct(n,m)+'%"></i></div>'}
 // 이슈의 현재 단계: 미해결(0.·1.·2.)은 고칠 책임이 있는 원인 단계, 조치 끝(3.done)·보관(4.archive)은 사람 확인 단계인 시험. 원인 미정도 시험
@@ -252,7 +251,7 @@ function render(){
   D.now.forEach(function(r){h+='<tr><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td></tr>'});
   h+='</table>'+(isFile(D.nowLink)?'<a class="foot" href="'+esc(vs(D.nowLink))+'" title="VS Code에서 열기">작업 파일 열기 (VS Code)</a>':'')+'</section>';
   if(D.mismatch&&D.mismatch.length){h+='<section class="card warn"><p class="lbl">맞지 않는 곳 '+D.mismatch.length+'</p><ul>';D.mismatch.forEach(function(m){h+='<li>'+esc(m)+'</li>'});h+='</ul></section>'}
-  h+='</div><div class="foot">기준 '+esc(D.asof)+' · '+esc(D.note)+(D.up?' · <a class="uplink" href="'+esc(D.up)+'">위로: 전체현황</a>':'')+'</div>';
+  h+='</div><div class="foot">마지막 변경 '+esc(D.asof)+' · '+esc(D.note)+(D.up?' · <a class="uplink" href="'+esc(D.up)+'">위로: 전체현황</a>':'')+'</div>';
   document.getElementById('app').innerHTML=h;
   [].forEach.call(document.querySelectorAll('[data-open]'),function(a){a.onclick=function(e){e.preventDefault();open=a.getAttribute('data-open');render();var x=document.querySelector('.detail');if(x)x.scrollIntoView({block:'start'})}});
   [].forEach.call(document.querySelectorAll('.stage.can'),function(b){b.onclick=function(){var n=b.getAttribute('data-s');open=open===n?null:n;render()}});

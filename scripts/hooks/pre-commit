@@ -7,6 +7,21 @@
 
 set -e
 
+# 현황판 갱신: 워크스페이스 생성기가 있으면 이 프로젝트의 docs/현황.md, docs/프로젝트현황.html 을
+# 지금 상태로 다시 만들어 이 커밋에 넣는다 (바뀐 게 없으면 파일을 건드리지 않음).
+# 생성기가 없거나 실패해도 커밋은 막지 않는다. 정본: develop/2.Tools/project-status/README.md
+STATUS_GEN="../2.Tools/project-status/generate_status.py"
+if [ -f "$STATUS_GEN" ]; then
+    PY=$(command -v python || command -v python3 || command -v py || true)
+    if [ -n "$PY" ] && "$PY" -X utf8 -B "$STATUS_GEN" --only . --quiet; then
+        for f in docs/현황.md docs/프로젝트현황.html; do
+            [ -f "$f" ] && git add -- "$f"
+        done
+    else
+        echo "pre-commit: 현황판 갱신 실패 — 커밋은 계속함" >&2
+    fi
+fi
+
 if [ -f pyproject.toml ] && grep -q '^version = "[0-9]*\.[0-9]*\.[0-9]*"' pyproject.toml; then
     FILE="pyproject.toml"
     read_version() { grep -m1 '^version = "' | sed -E 's/^version = "([0-9]+\.[0-9]+\.[0-9]+)".*/\1/'; }
