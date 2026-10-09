@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IDMA 프로젝트현황</title>
+<!-- ===== 데이터: 생성기 2.Tools/project-status/status_html.py 가 쓴다. 손으로 고치지 않는다. 사람 판단 값은 "llm" 칸만 고치고 생성기를 다시 돌린다 ===== -->
+<script type="application/json" id="status">
+{
+ "code": "IDMA",
+ "name": "입력문서관리기",
+ "asof": "2026-10-09 22:06",
+ "note": "게이트는 기존 판정 기록, 재실행 X · 문서·이슈·사람할일 재집계",
+ "up": "../../4.docs/프로젝트 전체현황.html",
+ "stage": "구현",
+ "todo": [],
+ "stages": [
+  {
+   "name": "설계",
+   "state": "O",
+   "n": 42,
+   "m": 42,
+   "left": ""
+  },
+  {
+   "name": "구현",
+   "state": "A",
+   "n": null,
+   "m": null,
+   "left": "impl 게이트 FAIL · 코드 있음"
+  },
+  {
+   "name": "시험",
+   "state": "A",
+   "n": null,
+   "m": null,
+   "left": "vv 게이트 FAIL"
+  }
+ ],
+ "now": [
+  [
+   "진행",
+   "초기빌드-잔여확인"
+  ]
+ ],
+ "nowLink": "notes/LLM작업/진행/초기빌드-잔여확인.md",
+ "details": [
+  {
+   "title": "설계",
+   "verdict": "SRS 중 SAD까지 이어진 것 42/42.",
+   "kind": "oax",
+   "rows": [
+    {
+     "label": "SRS (PRD구현)",
+     "O": 24,
+     "A": 0,
+     "X": 0
+    },
+    {
+     "label": "SAD (SRS구현)",
+     "O": 42,
+     "A": 0,
+     "X": 0
+    }
+   ]
+  }
+ ],
+ "mismatch": [],
+ "issueBase": "5.validate/",
+ "issues": [],
+ "llm": {
+  "todo": [],
+  "now": [],
+  "nowLink": "",
+  "mismatch": []
+ }
+}
+</script>
+<!-- ===== 아래 화면 코드: 정본은 2.Tools/project-status/templates/, 여기서 고치지 않는다 ===== -->
+<style>
+/* 색 강도 = 중요도. 노랑은 경고 전용 */
+:root{--bg:#f6f8fa;--card:#fff;--ink:#1f2328;--sub:#59636e;--line:#d1d9e0;
+--U:#9b73e5;--A:#3a87e1;--O:#48995f;--onfill:#1f2328;--X:#afb8c1;--Q:#d94e58;--N:#eaeef2;--warn:#fff8c5;--warnline:#bf8700;--warnink:#7d4e00}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#161b22;--ink:#e6edf3;--sub:#9198a1;--line:#3d444d;
+--U:#a179ea;--A:#69a9f9;--O:#65c773;--onfill:#0d1117;--X:#4d5560;--Q:#f9746d;--N:#262c36;--warn:#2b2311;--warnline:#bb8009;--warnink:#e3b341}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI","Malgun Gothic",sans-serif}
+a{color:inherit;overflow-wrap:anywhere}
+.wrap{max-width:1000px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+body.embedded .wrap{padding:12px;max-width:none}
+body.embedded .uplink{display:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.lbl{font-size:12px;color:var(--sub);font-weight:600;margin:0 0 8px}
+/* 상태 표시: 강한 것 = 내 차례·진행·끝, 흐린 것 = 미착수·모름·해당없음 */
+.st{white-space:nowrap;display:inline-flex;align-items:center;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600;border:1px solid transparent}
+.sU{background:var(--U);color:var(--onfill)}.sA{background:var(--A);color:var(--onfill)}.sO{background:var(--O);color:var(--onfill)}
+.sX{background:var(--N);color:var(--sub);border-color:var(--X)}
+.sQ{background:transparent;color:var(--Q);border:1px dashed var(--Q)}
+.sN{background:transparent;color:var(--sub);border-color:var(--N)}
+.gauge{position:relative;height:8px;background:var(--N);border-radius:4px;overflow:hidden}
+.gauge>i{position:absolute;inset:0 auto 0 0;background:var(--c);border-radius:4px}
+.age{font-size:12px;color:var(--sub);white-space:nowrap}
+.age.old{color:var(--warnink);background:var(--warn);border:1px solid var(--warnline);border-radius:6px;padding:1px 8px;font-weight:600}
+/* 상단 요약 */
+.head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.head h1{font-size:20px;margin:0}
+.head .nm{color:var(--sub);font-size:13px}
+.big{display:flex;align-items:baseline;gap:8px;margin:10px 0 4px}
+.big b{font-size:28px;line-height:1}
+.big span{color:var(--sub)}
+.todo-n{margin-left:auto;background:var(--U);color:var(--onfill);border-radius:8px;padding:5px 12px;font-weight:700;white-space:nowrap}
+.todo-n.zero{background:var(--O)}
+.todo{margin:10px 0 0;padding:0}
+.todo li{list-style:none;display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+.todo .mk{flex:none;width:8px;height:8px;border-radius:50%;background:var(--U)}
+.todo li.done{opacity:.5}.todo li.done a{text-decoration:line-through}
+.todo li.done .mk{width:12px;height:7px;border-radius:0;background:none;border-left:2px solid var(--O);border-bottom:2px solid var(--O);transform:rotate(-45deg) translate(1px,-2px)}
+.todo .cnt{margin-left:auto;font-weight:700;color:var(--U);font-size:15px}
+.todo li.done .cnt{color:var(--sub)}
+.who{font-size:11px;color:var(--sub);margin-top:6px}
+/* 중단 단계 */
+.pipe{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.stage{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:4px;border:1px solid var(--line);border-top:4px solid var(--c);border-radius:8px;padding:8px 10px;background:var(--card)}
+.stage.dim{opacity:.75}
+.stage.can{cursor:pointer}.stage.can:hover{background:var(--bg);border-color:var(--c)}
+.stage.on{box-shadow:0 0 0 2px var(--c)}
+.stage .t{display:flex;justify-content:space-between;align-items:center;gap:6px;font-weight:600}
+.stage .pct{font-size:22px;font-weight:700;line-height:1.1}
+.stage .pct small{font-size:12px;font-weight:400;color:var(--sub);margin-left:6px}
+.stage .lf{font-size:13px}
+.stage .basis{font-size:12px;color:var(--sub)}
+.stage .open{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--c);margin-top:2px}
+.stage .open:after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translate(-2px,-2px)}
+.stage.on .open:after{transform:rotate(-135deg)}
+.detail{margin-top:10px;border-left:4px solid var(--c);padding:8px 12px;background:var(--bg);border-radius:0 8px 8px 0}
+.detail .v{margin:0 0 8px}
+.row{display:grid;grid-template-columns:110px 1fr 90px;gap:8px;align-items:center;padding:3px 0}
+.row .n{text-align:right;font-size:12px;color:var(--sub)}
+.stack{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--N)}
+.hbar{height:12px;background:var(--A);border-radius:3px;opacity:.7}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--sub);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block;background:var(--c)}
+/* 하단 기타 */
+.etc{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.now td{padding:3px 8px 3px 0;vertical-align:top}.now td:first-child{color:var(--sub);white-space:nowrap}
+.warn{background:var(--warn);border-color:var(--warnline)}
+.warn .lbl{color:var(--warnink)}
+.warn ul{margin:0;padding-left:18px}
+.foot{font-size:12px;color:var(--sub)}
+@media (max-width:640px){.etc{grid-template-columns:1fr}.pipe{grid-template-columns:1fr 1fr}.row{grid-template-columns:64px 1fr 70px}.todo-n{margin-left:0}}
+.toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:99;max-width:90%;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.iss{margin-top:12px}.iss h4{margin:10px 0 4px;font-size:13px;display:flex;gap:8px;align-items:center}
+.iss .n{font-weight:400;color:var(--sub)}
+.iss ul{margin:0;padding:0}.iss li{list-style:none;display:grid;grid-template-columns:110px 1fr auto;gap:8px;padding:4px 0;border-top:1px solid var(--line);font-size:13px}
+.iss .cz{font-size:11px;color:var(--sub);border:1px solid var(--line);border-radius:999px;padding:0 8px;white-space:nowrap;align-self:center}
+.iss details summary{cursor:pointer;font-size:13px;color:var(--sub);margin-top:10px}
+@media (max-width:640px){.iss li{grid-template-columns:1fr auto}.iss li a{grid-column:1/3}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+(function(){
+var D=JSON.parse(document.getElementById('status').textContent);
+var NAME={U:'내 차례',A:'진행',X:'미착수','?':'모름',O:'끝','-':'해당없음'};
+var CLS={U:'U',A:'A',X:'X','?':'Q',O:'O','-':'N'};
+var STALE=3; // 이 일수 이상 지나면 오래된 데이터 경고
+var open=decodeURIComponent(location.hash.slice(1))||null;
+var embedded=window.parent!==window;
+document.body.classList.toggle('embedded',embedded);
+function col(s){return 'var(--'+CLS[s]+')'}
+// 상대 경로 -> VS Code 링크. 데이터는 상대 경로 그대로 둔다
+function vs(l){if(!l||/^[a-z][a-z0-9+.-]*:/i.test(l))return l;var u=new URL(l,location.href);if(u.protocol!=='file:')return u.href;
+  return 'vscode://file/'+encodeURI(decodeURIComponent(u.pathname).replace(/^\/(?=[A-Za-z]:)/,''))}
+// VS Code 링크 클릭 시 경로도 복사. VS Code 내장 브라우저는 vscode:// 링크를 열지 않으므로 Ctrl+P 붙여넣기로 대신한다
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href^="vscode://file/"]');if(!a)return;
+  var p=decodeURIComponent(a.getAttribute('href').slice(14)).replace(/\//g,String.fromCharCode(92));
+  var t=document.createElement('div');t.className='toast';document.body.appendChild(t);
+  function say(ok){t.textContent=ok?'경로 복사됨 · VS Code가 안 열리면 Ctrl+P 에 붙여넣기':'VS Code가 안 열리면 Ctrl+P 에 이 경로: '+p}
+  var ok=false,x=document.createElement('textarea');x.value=p;x.style.position='fixed';x.style.opacity='0';document.body.appendChild(x);x.select();try{ok=document.execCommand('copy')}catch(_){}x.remove();
+  say(ok);setTimeout(function(){t.remove()},ok?3500:9000);
+  if(!ok&&navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(p).then(function(){say(true)},function(){});
+});
+// 링크는 파일만. 폴더(끝이 /)나 빈 링크는 글자로만 그린다
+function isFile(l){return !!l&&l.charAt(l.length-1)!=='/'}
+function lnk(l,txt){if(l&&l.charAt(0)==='#')return '<a href="'+esc(l)+'" data-open="'+esc(l.slice(1))+'">'+esc(txt)+'</a>';return isFile(l)?'<a href="'+esc(vs(l))+'" title="VS Code에서 열기">'+esc(txt)+'</a>':'<span>'+esc(txt)+'</span>'}
+function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function st(s,txt){return '<span class="st s'+CLS[s]+'">'+esc(txt||NAME[s])+'</span>'}
+function days(s){var m=/(\d{4})-(\d\d)-(\d\d)(?: (\d\d):(\d\d))?/.exec(s||'');if(!m)return null;
+  return Math.floor((Date.now()-new Date(+m[1],m[2]-1,+m[3],+(m[4]||0),+(m[5]||0)))/86400000)}
+function ageHtml(s){var d=days(s);if(d==null)return '<span class="age old">기준 시각 없음</span>';
+  return '<span class="age'+(d>=STALE?' old':'')+'" title="기준 '+esc(s)+'">'+(d<=0?'오늘 기준':d+'일 전 데이터')+'</span>'}
+function pct(n,m){return Math.floor(n/m*100)}
+function gauge(n,m,s){return '<div class="gauge" style="--c:'+(s==='U'||s==='A'||s==='O'?col(s):'var(--X)')+'"><i style="width:'+pct(n,m)+'%"></i></div>'}
+// 이슈의 현재 단계: 미해결(0.·1.·2.)은 고칠 책임이 있는 원인 단계, 조치 끝(3.done)·보관(4.archive)은 사람 확인 단계인 시험. 원인 미정도 시험
+function stageOf(c){c=(c||'').toLowerCase();if(/impl/.test(c))return '구현';if(/design|docs|prd|srs|sad|sdd/.test(c))return '설계';return '시험'}
+function open_(i){return /^[0-2][.]/.test(i.state)}
+function nowStage(i){return open_(i)?stageOf(i.cause):'시험'}
+function issuesOf(n){return (D.issues||[]).filter(function(i){return nowStage(i)===n})}
+// 이슈에서 단계 상태·남은 것·내 할 일을 계산한다. LLM은 이슈 목록만 적는다
+(function(){var add=[];D.stages.forEach(function(s){var I=issuesOf(s.name),w=I.filter(function(i){return i.state==='3.done'}).length,o=I.filter(open_).length;
+  if(o){if(s.state==='O')s.state='A';s.left='미해결 이슈 '+o+(s.left?' · '+s.left:'')}
+  /* 시험 진척 = 해결(보관)된 이슈 / 전체 이슈 */
+  if(s.name==='시험'&&D.issues&&D.issues.length){s.n=D.issues.filter(function(i){return /^4[.]/.test(i.state)}).length;s.m=D.issues.length}
+  if(w){s.state='U';s.left='이슈 확인 대기 '+w+(s.left?' · '+s.left:'');add.push({text:s.name+' 이슈 확인 후 4.archive로 이동',count:w,link:'#'+s.name})}});
+  D.todo=add.concat(D.todo)})();
+function detailOf(name){var d=D.details.filter(function(d){return d.title===name})[0];if(d)return d;return issuesOf(name).length?{title:name,verdict:'',rows:[]}:null}
+function detailHtml(d,c){var h='<div class="detail" style="--c:'+c+'">'+(d.verdict?'<p class="v">'+esc(d.verdict)+'</p>':'');
+  if(d.kind==='oax'){d.rows.forEach(function(r){var t=r.O+r.A+r.X||1;
+    h+='<div class="row"><span>'+esc(r.label)+'</span><div class="stack" title="끝 '+r.O+' · 진행 '+r.A+' · 미착수 '+r.X+'"><i style="width:'+r.O/t*100+'%;background:var(--O)"></i><i style="width:'+r.A/t*100+'%;background:var(--A)"></i><i style="width:'+r.X/t*100+'%;background:var(--X)"></i></div><span class="n">끝 '+r.O+' / '+t+'</span></div>'});
+    h+='<div class="legend"><span style="--c:var(--O)"><i></i>끝</span><span style="--c:var(--A)"><i></i>진행</span><span style="--c:var(--X)"><i></i>미착수</span></div>';
+  }else if(d.rows&&d.rows.length){var mx=Math.max.apply(null,d.rows.map(function(r){return r.count}))||1;
+    d.rows.forEach(function(r){h+='<div class="row"><span>'+esc(r.label)+'</span><div><div class="hbar" style="width:'+r.count/mx*100+'%"></div></div><span class="n">'+r.count+'건</span></div>'})}
+  var I=issuesOf(d.title);if(I.length){var G=[[/^[0-2][.]/,'미해결','A'],[/^3[.]/,'내 확인 대기','U'],[/^4[.]/,'보관 · 확인 끝','O']];h+='<div class="iss">';
+    G.forEach(function(g){var L=I.filter(function(i){return g[0].test(i.state)});if(!L.length)return;
+      var body='<ul>'+L.map(function(i){return '<li>'+lnk((D.issueBase||'')+i.state+'/'+i.file,i.id)+'<span>'+esc(i.title)+(i.fixedAt?' <span class="cz" title="마지막 조치 단계">조치: '+esc(stageOf(i.fixedAt))+'</span>':'')+'</span><span class="cz" title="원인단계">원인: '+esc(i.cause||'미정')+'</span></li>'}).join('')+'</ul>';
+      if(g[1].charAt(0)==='보')h+='<details><summary>'+g[1]+' '+L.length+'건</summary>'+body+'</details>';
+      else h+='<h4>'+st(g[2],g[1])+'<span class="n">'+L.length+'건 · 번호를 누르면 이슈 파일</span></h4>'+body});
+    h+='</div>'}
+  return h+'</div>'}
+// 끝인데 비율도 근거도 없으면 정직하게 '모름'
+function fix(s){return (s.state==='O'&&s.n==null&&!s.basis)?'?':s.state}
+function render(){
+  var k=D.todo.filter(function(t){return!t.done}).reduce(function(a,t){return a+t.count},0);
+  var key=D.stages.filter(function(s){return s.name===(D.key||D.stage)})[0];
+  var h='';
+  // 상단: 요약
+  h+='<section class="card"><div class="head"><h1>'+esc(D.code)+'</h1><span class="nm">'+esc(D.name)+'</span>'+ageHtml(D.asof);
+  h+='<span class="todo-n'+(k?'':' zero')+'">'+(k?'내 할 일 '+k+'건':'내 할 일 없음')+'</span></div>';
+  if(key&&key.n!=null)h+='<div class="big"><b>'+pct(key.n,key.m)+'%</b><span>'+esc(D.stage?D.stage+' 단계':D.key)+' · '+key.n+' / '+key.m+' 끝</span></div>'+gauge(key.n,key.m,key.state);
+  h+='<ul class="todo">';
+  D.todo.forEach(function(t){h+='<li class="'+(t.done?'done':'')+'"><span class="mk"></span>'+lnk(t.link,t.text)+'<span class="cnt">'+t.count+'</span></li>'});
+  h+='</ul>'+(D.todo.length?'<div class="todo who">완료 표시는 LLM이 데이터에서 갱신</div>':'')+'</section>';
+  // 중단: 단계별 요약, 누르면 상세
+  h+='<section class="card"><p class="lbl">단계별 상태 · 펼침 표시가 있는 카드를 누르면 상세</p><div class="pipe">';
+  D.stages.forEach(function(s){var d=detailOf(s.name), S=fix(s), strong=(S==='U'||S==='A'||S==='O');
+    h+='<button class="stage'+(d?' can':'')+(strong?'':' dim')+(open===s.name?' on':'')+'" data-s="'+esc(s.name)+'" style="--c:'+(strong?col(S):'var(--X)')+'"'+(d?'':' disabled')+'><div class="t"><span>'+esc(s.name)+'</span>'+st(S)+'</div>';
+    if(s.n!=null&&s.m)h+='<div class="pct">'+pct(s.n,s.m)+'%<small>'+s.n+' / '+s.m+'</small></div>'+gauge(s.n,s.m,S);
+    else if(S==='O')h+='<div class="pct">끝<small>비율 없음</small></div>'+gauge(1,1,'O');
+    if(s.left)h+='<div class="lf">'+esc(s.left)+'</div>';
+    if(s.basis)h+='<div class="basis">근거: '+esc(s.basis)+'</div>';
+    if(S==='?'&&s.state==='O')h+='<div class="basis">끝으로 기록됐지만 비율·근거 없음</div>';
+    if(d)h+='<div class="open">'+(open===s.name?'접기':'상세 펼치기')+'</div>';
+    h+='</button>'});
+  h+='</div>';
+  var os=D.stages.filter(function(s){return s.name===open})[0];
+  if(os&&detailOf(open))h+=detailHtml(detailOf(open),col(fix(os)==='U'||fix(os)==='A'||fix(os)==='O'?fix(os):'X'));
+  h+='</section>';
+  // 하단: 기타
+  h+='<div class="etc"><section class="card"><p class="lbl">지금 하는 일</p><table class="now">';
+  D.now.forEach(function(r){h+='<tr><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td></tr>'});
+  h+='</table>'+(isFile(D.nowLink)?'<a class="foot" href="'+esc(vs(D.nowLink))+'" title="VS Code에서 열기">작업 파일 열기 (VS Code)</a>':'')+'</section>';
+  if(D.mismatch&&D.mismatch.length){h+='<section class="card warn"><p class="lbl">맞지 않는 곳 '+D.mismatch.length+'</p><ul>';D.mismatch.forEach(function(m){h+='<li>'+esc(m)+'</li>'});h+='</ul></section>'}
+  h+='</div><div class="foot">기준 '+esc(D.asof)+' · '+esc(D.note)+(D.up?' · <a class="uplink" href="'+esc(D.up)+'">위로: 전체현황</a>':'')+'</div>';
+  document.getElementById('app').innerHTML=h;
+  [].forEach.call(document.querySelectorAll('[data-open]'),function(a){a.onclick=function(e){e.preventDefault();open=a.getAttribute('data-open');render();var x=document.querySelector('.detail');if(x)x.scrollIntoView({block:'start'})}});
+  [].forEach.call(document.querySelectorAll('.stage.can'),function(b){b.onclick=function(){var n=b.getAttribute('data-s');open=open===n?null:n;render()}});
+}
+render();
+if(embedded)window.parent.postMessage({type:'project-status',data:D},'*');
+})();
+</script>
+</body>
+</html>
