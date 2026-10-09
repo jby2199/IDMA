@@ -5,7 +5,7 @@
 이번 작업은 기존 문서의 관리 기준 도입이며 제품 합의·시험을 새로 승인하지 않는다.
 
 - 사용자 원문(2026-10-06): “`PFOA-프로젝트폴더정리기` 제외한 나머지에 반영 진행.”
-- [반영 계획](../../../../../1.reference/ZIP-개발환경-실제문서반영계획서.md), [공통 근거 계약](../../../../../.claude/skills/by-orchestration/references/requirements-evidence.md), [워크스페이스 작업](../../../../../4.docs/notes/LLM작업/진행중/zip-document-rollout-2026-10-06.md).
+- [반영 계획](../../../../../1.reference/ZIP-개발환경-실제문서반영계획서.md), [공통 근거 계약](../../../../../.claude/skills/by-orchestration/references/requirements-evidence.md), [워크스페이스 작업](../../../../../4.docs/notes/LLM작업/진행/zip-document-rollout-2026-10-06.md).
 - 제외: 제품 동작·요구 의미 변경, 누락 SAD 신규 작성, 과거 승인·수락 이력 조작. 원문 요구·ID·기존 개정 이력을 보존한다.
 - `00.01`을 도입한 경우 현재 본문의 합의 기준을 확정하지 못한 관리 초판이다. 과거 요구의 효력 취소나 새로운 제품 승인으로 해석하지 않는다.
 
@@ -45,8 +45,8 @@
 이번 관리 전환 수락과 제품 전체 단계 판정을 구분한다.
 
 - 독립 검증: [VR-REQ-EVAL](../../../VerificationReport/zip-document-adoption/VR-REQ-EVAL.md). 이번 CHANGE_SET 범위 PASS; 전체 제품 승인·시험 현재성 재확인 제외.
-- 작성 검사: 원래 HEAD 대비 동일 인자·동일 출력·동일 종료코드. 실제 결과·대상 해시는 [원시 검사 기록](../../../../../4.docs/notes/LLM작업/진행중/zip-document-rollout-2026-10-06/validation.json) 참조. PIET의 기존 작성 검사 FAIL은 그대로 보존.
-- 단계 gate: `pwsh -NoProfile -File tools/gate.ps1 docs`, exit 1, **FAIL**. [실제 gate](../../../../tools/gates/docs.GATE.md) · [원시 실행 기록](../../../../../4.docs/notes/LLM작업/진행중/zip-document-rollout-2026-10-06/gates.json).
+- 작성 검사: 원래 HEAD 대비 동일 인자·동일 출력·동일 종료코드. 실제 결과·대상 해시는 [원시 검사 기록](../../../../../4.docs/notes/LLM작업/진행/zip-document-rollout-2026-10-06/validation.json) 참조. PIET의 기존 작성 검사 FAIL은 그대로 보존.
+- 단계 gate: `pwsh -NoProfile -File tools/gate.ps1 docs`, exit 1, **FAIL**. [실제 gate](../../../../tools/gates/docs.GATE.md) · [원시 실행 기록](../../../../../4.docs/notes/LLM작업/진행/zip-document-rollout-2026-10-06/gates.json).
 - 작업 수락: 문서 관리 전환 T01 **1/1**. 제품 요구 충족률·실사용 검증은 미평가. 커밋 전 수락행은 origin 식별 대기이며 커밋 뒤 추가 이력·부모·현재 경로를 대조한다.
 
 ### 단계 실패와 재개 조건

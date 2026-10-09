@@ -790,7 +790,7 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
 At adoption on 2026-10-06, `rev: "00.01"` mapped the current legacy text to the common revision
 contract without establishing approval or revalidating earlier evidence. The leading `rev`
 field identifies the current document revision. See the
-[adoption record](../notes/LLM작업/진행중/zip-document-adoption-2026-10-06.md).
+[adoption record](../notes/LLM작업/진행/zip-document-adoption-2026-10-06.md).
 
 | 판 | 날짜 | 변경 요약 | 영향 요구 ID |
 |---|---|---|---|
