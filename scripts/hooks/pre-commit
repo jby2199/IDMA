@@ -1,0 +1,50 @@
+#!/bin/sh
+# 커밋마다 버전(x.y.z)의 patch(z)를 자동 +1 한다.
+# 버전 위치: pyproject.toml 의 `version = "x.y.z"`, 없으면 저장소 루트 VERSION 파일(한 줄 x.y.z).
+# 이번 커밋에서 minor(y) 또는 major(x)가 직전 커밋보다 이미 올라갔으면
+# (대개편·릴리즈로 사람이 올리고 patch를 0으로 리셋한 경우) 건드리지 않는다.
+# 활성화(로컬 저장소마다 1회): git config core.hooksPath scripts/hooks
+
+set -e
+
+if [ -f pyproject.toml ] && grep -q '^version = "[0-9]*\.[0-9]*\.[0-9]*"' pyproject.toml; then
+    FILE="pyproject.toml"
+    read_version() { grep -m1 '^version = "' | sed -E 's/^version = "([0-9]+\.[0-9]+\.[0-9]+)".*/\1/'; }
+elif [ -f VERSION ]; then
+    FILE="VERSION"
+    read_version() { grep -m1 -E '^[0-9]+\.[0-9]+\.[0-9]+' | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/'; }
+else
+    exit 0
+fi
+
+CUR_VERSION=$(read_version < "$FILE")
+if [ -z "$CUR_VERSION" ]; then
+    exit 0
+fi
+
+PREV_VERSION=$(git show HEAD:"$FILE" 2>/dev/null | read_version || true)
+
+CUR_MAJOR=$(echo "$CUR_VERSION" | cut -d. -f1)
+CUR_MINOR=$(echo "$CUR_VERSION" | cut -d. -f2)
+CUR_PATCH=$(echo "$CUR_VERSION" | cut -d. -f3)
+
+if [ -n "$PREV_VERSION" ]; then
+    PREV_MAJOR=$(echo "$PREV_VERSION" | cut -d. -f1)
+    PREV_MINOR=$(echo "$PREV_VERSION" | cut -d. -f2)
+
+    if [ "$CUR_MAJOR" != "$PREV_MAJOR" ] || [ "$CUR_MINOR" != "$PREV_MINOR" ]; then
+        # major/minor가 이미 상승했다 — 사람이 명시적으로 개정한 것이므로 patch는 안 건드린다.
+        exit 0
+    fi
+fi
+
+NEW_VERSION="${CUR_MAJOR}.${CUR_MINOR}.$((CUR_PATCH + 1))"
+
+if [ "$FILE" = "pyproject.toml" ]; then
+    sed -i -E "s/^version = \"${CUR_VERSION}\"/version = \"${NEW_VERSION}\"/" "$FILE"
+else
+    printf '%s\n' "$NEW_VERSION" > "$FILE"
+fi
+git add "$FILE"
+
+echo "pre-commit: ${FILE} version ${CUR_VERSION} -> ${NEW_VERSION}"

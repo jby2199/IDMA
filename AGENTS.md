@@ -20,6 +20,7 @@
 ## 상황별 참조
 | Situation | Read |
 |---|---|
+| Bumping minor/major version, enabling the pre-commit hook | [.agents/version.md](.agents/version.md) |
 | Feature add/change request; `docs`/`impl`/`vv` stage work | `by-stage-rules` skill ([SKILL.md](../.claude/skills/by-stage-rules/SKILL.md)). Tests are never skipped. |
 | ADR need and format | `by-adr-writer` |
 | PRD/SRS writing | `by-prd-writer`, `by-srs-writer` |
