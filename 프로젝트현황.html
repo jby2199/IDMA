@@ -9,7 +9,7 @@
 {
  "code": "IDMA",
  "name": "입력문서관리기",
- "asof": "2026-10-10 08:07",
+ "asof": "2026-10-10 08:34",
  "note": "게이트는 기존 판정 기록, 재실행 X · 문서·이슈·사람할일 재집계",
  "up": "../프로젝트 전체현황.html",
  "stage": "구현",
@@ -213,7 +213,9 @@ body.embedded .uplink{display:none}
 var D=JSON.parse(document.getElementById('status').textContent);
 var NAME={U:'내 차례',A:'진행',X:'미착수','?':'모름',O:'끝','-':'해당없음'};
 var CLS={U:'U',A:'A',X:'X','?':'Q',O:'O','-':'N'};
-var open=decodeURIComponent(location.hash.slice(1))||null;
+// 공유용 전체현황이 srcdoc 으로 내장할 때만 __SHARE/__HASH 를 주입한다. 이때 파일 링크는 글자로만 그린다
+var SHARE=!!window.__SHARE;
+var open=decodeURIComponent(window.__HASH!=null?window.__HASH:location.hash.slice(1))||null;
 var embedded=window.parent!==window;
 document.body.classList.toggle('embedded',embedded);
 function col(s){return 'var(--'+CLS[s]+')'}
@@ -231,7 +233,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
 });
 // 링크는 파일만. 폴더(끝이 /)나 빈 링크는 글자로만 그린다
 function isFile(l){return !!l&&l.charAt(l.length-1)!=='/'}
-function lnk(l,txt){if(l&&l.charAt(0)==='#')return '<a href="'+esc(l)+'" data-open="'+esc(l.slice(1))+'">'+esc(txt)+'</a>';return isFile(l)?'<a href="'+esc(vs(l))+'" title="VS Code에서 열기">'+esc(txt)+'</a>':'<span>'+esc(txt)+'</span>'}
+function lnk(l,txt){if(l&&l.charAt(0)==='#')return '<a href="'+esc(l)+'" data-open="'+esc(l.slice(1))+'">'+esc(txt)+'</a>';return isFile(l)&&!SHARE?'<a href="'+esc(vs(l))+'" title="VS Code에서 열기">'+esc(txt)+'</a>':'<span>'+esc(txt)+'</span>'}
 function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function st(s,txt){return '<span class="st s'+CLS[s]+'">'+esc(txt||NAME[s])+'</span>'}
 function days(s){var m=/(\d{4})-(\d\d)-(\d\d)(?: (\d\d):(\d\d))?/.exec(s||'');if(!m)return null;
@@ -304,7 +306,7 @@ function render(){
   // 하단: 기타
   h+='<div class="etc"><section class="card"><p class="lbl">지금 하는 일</p><table class="now">';
   D.now.forEach(function(r){h+='<tr><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td></tr>'});
-  h+='</table>'+(isFile(D.nowLink)?'<a class="foot" href="'+esc(vs(D.nowLink))+'" title="VS Code에서 열기">작업 파일 열기 (VS Code)</a>':'')+'</section>';
+  h+='</table>'+(isFile(D.nowLink)&&!SHARE?'<a class="foot" href="'+esc(vs(D.nowLink))+'" title="VS Code에서 열기">작업 파일 열기 (VS Code)</a>':'')+'</section>';
   if(D.mismatch&&D.mismatch.length){h+='<section class="card warn"><p class="lbl">맞지 않는 곳 '+D.mismatch.length+'</p><ul>';D.mismatch.forEach(function(m){h+='<li>'+esc(m)+'</li>'});h+='</ul></section>'}
   h+='</div><div class="foot">마지막 변경 '+esc(D.asof)+' · '+esc(D.note)+(D.up?' · <a class="uplink" href="'+esc(D.up)+'">위로: 전체현황</a>':'')+'</div>';
   document.getElementById('app').innerHTML=h;
