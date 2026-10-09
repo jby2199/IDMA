@@ -1,6 +1,6 @@
 ---
-rev: "00.02"
-rev_date: "2026-10-09"
+rev: "00.03"
+rev_date: "2026-10-10"
 ---
 
 # PRD — 제출물 관리대장 자동화 시스템 (IDMA)
@@ -19,6 +19,7 @@ Hybrid 분류(Rule Engine 우선 + AI 보조) 구조와 Phase 기반 배치, 로
 - 분류 성공 파일은 해당 Phase 폴더로, 실패 파일은 `project_root`에 안전 배치(Fallback)한다.
 - 분류 결과를 제출물 관리대장에 자동 기록한다.
 - 운영 설정(경로·threshold 등)을 로컬 Python UI에서 수정할 수 있다.
+- 실행 중 `source_root`를 상주 감시해 유입 파일을 자동 처리하고, 처리 현황을 GUI 대시보드로 보여준다.
 
 ---
 
@@ -28,7 +29,7 @@ Hybrid 분류(Rule Engine 우선 + AI 보조) 구조와 Phase 기반 배치, 로
 |------|------|
 | 대상 사용자 | 프로젝트 제출물 접수·관리 담당자(비개발자 실무자 포함) |
 | 운영체제 | 로컬 PC(Windows). Python 실행 환경 필요 |
-| 배포 형태 | 로컬 Python 애플리케이션(CLI 실행 + 로컬 Python GUI 설정 도구) |
+| 배포 형태 | 로컬 Python 애플리케이션. GUI 모드(설정·감시 시작/중지·대시보드·트레이) 또는 무GUI 모드(`--nogui`)로 실행되며, 실행 중 `source_root`를 상주 감시한다(<PRD-F020>) |
 | 데이터 계층 | Knowledge Layer(읽기 전용, `문서목록.json`) + Runtime Config Layer(UI 편집 가능, `ledger.config.yaml`) 분리 |
 | 경로 해석 | 모든 상대경로는 `project_root` 기준으로 resolve. 실행 위치(CWD)와 무관하게 동일 결과를 보장한다. |
 
@@ -93,13 +94,16 @@ Rule로 판정할 수 없는(모호하거나 매칭 실패한) 케이스에서�
 ### 4.2 분류 (Hybrid: Rule + AI)
 
 [PRD-F004] 전체 분류 흐름
-시스템은 파일 탐색 → Rule Engine 분류 → (실패 시) AI 분류 → (실패 시) Fallback 배치 순서로 처리한다.
+시스템은 파일 감지 → (설정 시) 프로젝트 문서번호 매칭(<PRD-F019>) → Rule Engine 분류 → (실패 시) AI 분류 → (실패 시) Fallback 배치 순서로 처리한다.
 
 [PRD-F005] Rule Engine — abbr 매칭
-시스템은 `문서목록.json`의 `abbr` 값과 파일명을 정확 매치(대소문자 무시, 토큰 단위 비교)로 비교한다. 매치 시 confidence는 1.0이며 우선순위 1로 처리한다.
+시스템은 `문서목록.json`의 `abbr` 값과 파일명을 정확 매치(대소문자 무시, 토큰 단위 비교)로 비교한다. 매치 시 confidence는 1.0이며 Rule Engine 안에서 우선순위 1로 처리한다. 단, 프로젝트 문서번호 매칭(<PRD-F019>)이 성립한 파일에는 abbr 매칭을 수행하지 않는다.
 
 [PRD-F006] Rule Engine — full_name 매칭
 시스템은 `문서목록.json`의 `full_name`을 공백 기준으로 단어 분리하고, 파일명에 포함된 단어 수를 계산한다. 전체 단어의 `rule.full_name_min_ratio`(기본 50%) 이상 매치 시 성공으로 판정한다. confidence는 매치 비율 70% 이상이면 0.8, 50~69%이면 0.6, 50% 미만이면 실패로 처리한다.
+
+[PRD-F019] 프로젝트 문서번호 매칭
+`project_doc_info` 설정(프로젝트 문서목록 xlsx 경로, 시트명, 문서번호 컬럼명, 문서구분 컬럼명)이 모두 지정된 경우, 시스템은 Rule Engine abbr 매칭보다 먼저 파일명에 포함된 프로젝트 문서번호를 그 xlsx에서 찾는다. 찾은 행의 문서구분 값을 `문서목록.json`의 약어로 해석해 artifact와 Phase를 정하며, 결과는 `classification_method` `Rule-ABBR`, confidence 1.0으로 기록한다. 문서번호를 찾지 못하거나 문서구분을 약어로 해석하지 못하면 abbr 매칭(<PRD-F005>)으로 넘어간다. 이 xlsx는 읽기만 한다.
 
 [PRD-F007] Rule Engine — 충돌 처리
 복수 후보가 매치되면 가장 높은 매치 비율의 후보를 선택한다. 매치 비율이 동일한 후보가 여럿이면 AI를 호출한다.
@@ -134,7 +138,10 @@ AI 분류 입력은 파일명과 `문서목록.json` 내용이다. AI 분류 출
 ### 4.6 로컬 Python UI
 
 [PRD-F015] UI 제공 기능
-로컬 Python UI는 다음 설정을 제공한다: `project_root` 설정, `source_root` 설정, `phase_folders` 설정, full_name 매치 비율 설정, AI threshold 설정, Fallback 사용 여부 설정, 중복 정책 설정, 설정 저장.
+로컬 Python UI는 다음 설정을 제공한다: `project_root` 설정, `source_root` 설정, `phase_folders` 설정, full_name 매치 비율 설정, AI threshold 설정, Fallback 사용 여부 설정, 중복 정책 설정, `project_doc_info` 설정(<PRD-F019>의 xlsx 경로·시트명·문서번호 컬럼명·문서구분 컬럼명), 설정 저장.
+
+[PRD-F021] 처리 현황 대시보드와 트레이
+GUI는 감시 상태(실행 중/중지), 최근 처리 시각, 성공·실패 건수, 처리한 파일별 결과 목록(파일명·배치 폴더·시각·성공/실패)과 선택한 파일의 처리 이벤트 상세를 보여주며, 결과 목록을 클립보드로 복사할 수 있다. GUI 창은 시스템 트레이로 최소화할 수 있고, 트레이 메뉴에서 창 열기와 프로그램 종료를 제공한다.
 
 [PRD-F016] UI 비제공 기능
 로컬 Python UI는 `문서목록.json` 편집 기능과 Knowledge 데이터 수정 기능을 제공하지 않는다.
@@ -147,7 +154,12 @@ AI 분류 입력은 파일명과 `문서목록.json` 내용이다. AI 분류 출
 ### 4.8 로그
 
 [PRD-F018] 로그 기록 항목
-시스템은 실행마다 다음을 로그에 기록한다: 실행 시각, config 버전/경로, Knowledge 파일 경로, 분류 방식, 매칭 근거, 최종 경로, fallback 여부.
+시스템은 실행(감시 세션)마다 다음을 로그에 기록한다: 실행 시각, config 버전/경로, Knowledge 파일 경로, 분류 방식, 매칭 근거, 최종 경로, fallback 여부.
+
+### 4.9 상주 감시
+
+[PRD-F020] 상주 감시 실행
+시스템은 실행 중 `source_root`를 상주 감시해, 새로 생기거나 변경된 파일을 크기·수정 시각이 일정 시간 변하지 않은 뒤(안정화) 처리한다. 파일 시스템 이벤트를 쓸 수 없는 환경에서는 일정 주기로 폴더를 다시 읽는다. GUI 모드에서는 감시 시작·중지 버튼으로 제어하고, 무GUI 모드(`--nogui`)에서는 기동 즉시 감시를 시작해 사용자가 중단(Ctrl+C)할 때까지 실행한다. 폴링 주기와 안정화 시간은 외부 설정 파일(`app.config.yaml`)에서 읽는다.
 
 ---
 
@@ -166,7 +178,7 @@ AI는 Rule Engine이 판정하지 못하는 경우에만 보조적으로 호출�
 어떤 분류 실패 상황에서도 파일은 유실되지 않고 `project_root`에 안전하게 배치되어야 한다.
 
 [PRD-N005] 감사 추적성
-모든 분류 결과는 classification_method와 매칭 근거를 포함해 관리대장·로그에 기록되어야 한다(4.5절, 4.8절).
+모든 분류 결과는 classification_method와 매칭 근거를 포함해 관리대장·로그에 기록되어야 한다(4.5절, 4.8절). 단, 파일 이동 후 관리대장 행 기록 자체가 실패한 파일은 원래 위치(`source_root`)로 되돌려 `Error`로 처리하고 그 결과를 로그에만 기록한다(2026-10-10 사용자 결정, DISC-007 Q07).
 
 [PRD-N006] 유지보수성 (외부 파일 기반)
 분류 기준(Knowledge)과 운영 설정(Config)은 코드에 하드코딩하지 않고 외부 파일로 분리해 유지보수한다.
@@ -226,3 +238,8 @@ Evidence, constraints and verification: [document adoption work note](../notes/L
 | 판 | 날짜 | 변경 요약 | 영향 요구 ID |
 |---|---|---|---|
 | 00.00 | 2026-10-06 | Initial management draft adoption; existing requirement/design meaning and IDs retained; no approval inferred | None — management metadata and explanatory links only |
+
+Draft minor revisions are not table rows: the revision contract (`.claude/skills/by-orchestration/references/requirements-evidence.md`) lists major revisions only and minor revisions update the frontmatter. They are recorded here; none is an approval of the whole text.
+
+- `00.02` (2026-10-09): adoption-record link path updated; no requirement meaning change.
+- `00.03` (2026-10-10): user decisions recorded in workspace `4.docs/notes/사람할일/대기중/DISC-007-sad-followup-decisions.md` — Q02 "Q2 기능을 문서에 명시" (document existing code features: project document-number matching, resident watching, dashboard and tray) and Q07 "Q7 인정" (ledger-write-failure files recorded in the log only). Added `<PRD-F019>`, `<PRD-F020>`, `<PRD-F021>`; changed `<PRD-F004>`, `<PRD-F005>`, `<PRD-F015>`, `<PRD-F018>`, `<PRD-N005>`, section 1.3 and the section 2 deployment row.

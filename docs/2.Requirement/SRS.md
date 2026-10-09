@@ -1,5 +1,5 @@
 ---
-rev: "00.04"
+rev: "00.05"
 rev_date: 2026-10-10
 ---
 
@@ -15,18 +15,21 @@ IDMA는 `source_root`에 유입된 제출물 파일을 파일명 기반으로 �
 AI 분류를 보조 수단으로 사용하는 Hybrid 구조다.
 
 본 SRS는 `docs/1.Concept/PRD.md`(이하 PRD)를 상위 문서로 하며, PRD의
-<PRD-U001>~<PRD-U005>, <PRD-A001>~<PRD-A008>, <PRD-F001>~<PRD-F018>,
+<PRD-U001>~<PRD-U005>, <PRD-A001>~<PRD-A008>, <PRD-F001>~<PRD-F021>,
 <PRD-N001>~<PRD-N006>을 소프트웨어 수준의 검증 가능한 요구사항으로 정제한다.
 
-본 문서에서 "시스템"은 IDMA 실행 엔진(CLI)과 로컬 설정 UI를 합한 소프트웨어
-전체를 가리킨다. 구현자의 재량을 줄이기 위해 경계값·수치·오류 처리·데이터
+본 문서에서 "시스템"은 IDMA 처리 엔진(상주 감시)과 로컬 GUI(설정·감시 제어·
+대시보드·트레이)를 합한 소프트웨어 전체를 가리킨다. 구현자의 재량을 줄이기 위해 경계값·수치·오류 처리·데이터
 스키마를 본문에 확정한다. PRD에 근거 값이 없는 항목은 본 SRS에서 기본값을
 확정하고, 해당 요구사항의 `상위요건:` 줄에 `설계 결정`으로 표시한다.
 
 ## 2. 범위
 
 **In (이번 구현 범위)**
-- 파일 탐색: `roots.source_root` 하위의 처리 대상 파일 목록 수집.
+- 상주 감시: 실행 중 `roots.source_root` 직속 파일의 생성·변경 감지와 안정화 대기
+  (이벤트 방식, 불가 시 폴링).
+- 프로젝트 문서번호 매칭: 외부 프로젝트 문서목록 xlsx(`project_doc_info`)로 파일명의
+  문서번호를 찾아 artifact를 정하는 단계(설정 시 Rule Engine abbr 매치보다 먼저).
 - Rule Engine 분류: `artifact.abbr` 정확 매치(우선순위 1), `artifact.full_name`
   단어 매치 비율 판정(우선순위 2), 다중 후보 충돌 처리.
 - AI 보조 분류: Rule이 판정하지 못한 케이스에 한한 호출. 분류 모델은 추상화
@@ -36,7 +39,8 @@ AI 분류를 보조 수단으로 사용하는 Hybrid 구조다.
 - 제출물 관리대장(xlsx) 8개 컬럼 기록.
 - 실행 로그 기록(JSON Lines).
 - 실행 전 사전 검증(config·Knowledge 파싱, phase 정합, 경로 접근성, threshold 범위).
-- 로컬 Python 설정 UI: `ledger.config.yaml` 편집·저장·유효성 검증.
+- 로컬 Python 설정 UI: `ledger.config.yaml` 편집·저장·유효성 검증, 감시 시작·중지,
+  처리 현황 대시보드, 시스템 트레이 최소화.
 
 **Out (범위 외 — PRD 6절과 동일)**
 - `문서목록.json`(Knowledge Layer)의 도구 내 편집 기능. 도구는 읽기 전용으로만
@@ -48,7 +52,9 @@ AI 분류를 보조 수단으로 사용하는 Hybrid 구조다.
   확인을 전제한다.
 - 관리대장 워크북의 서식·수식·시트 구조 변경. 시스템은 지정된 데이터 행 추가만
   수행한다.
-- 상주 프로세스(데몬·폴링·스케줄러) 형태의 자동 감시 실행.
+- OS 서비스 등록·작업 스케줄러 등록·OS 시작 시 자동 실행. 상주 감시는 사용자가
+  프로그램을 실행해 둔 동안에만 동작한다(2026-10-10 사용자 결정 Q02로 기존
+  "상주 프로세스 금지" 항목을 대체).
 
 ## 3. 정의 및 약어
 
@@ -72,7 +78,10 @@ AI 분류를 보조 수단으로 사용하는 Hybrid 구조다.
 | project_root | 모든 상대경로 해석의 기준 디렉토리이자 Fallback 배치 위치 |
 | source_root | 처리 대상 파일이 유입되는 디렉토리 |
 | phase_folders | Phase 값 → 배치 폴더 상대경로의 매핑 |
-| 실행 단위(run) | CLI 1회 실행. 고유한 `run_id`를 가진다 |
+| 실행 단위(run) | 감시 세션 1회(감시 시작부터 중지까지). 고유한 `run_id`를 가진다 |
+| 감시 세션 | GUI의 감시 시작~중지, 또는 무GUI 모드의 기동~중단(Ctrl+C) 구간. 정의는 <SRS-F044> |
+| 안정화 | 후보 파일의 크기·수정 시각이 `watch.file_stable_seconds`초 동안 변하지 않은 상태. 정의는 <SRS-F009> |
+| 프로젝트 문서번호 매칭 | `project_doc_info` xlsx의 문서번호로 파일명을 판정하는 단계. 정의는 <SRS-F018> |
 | JSON Lines | 1줄 1 JSON 객체로 구성된 텍스트 파일 형식(확장자 `.jsonl`) |
 | SRS-F / SRS-N | 기능 요구사항 / 비기능 요구사항 식별자 |
 
@@ -90,7 +99,7 @@ AI 분류를 보조 수단으로 사용하는 Hybrid 구조다.
 
 ### 5.1 이해관계자·사용자
 - 주 사용자: 프로젝트 제출물 접수·관리 담당자. 비개발자 실무자를 포함한다.
-  CLI 실행과 설정 UI 조작을 직접 수행한다.
+  프로그램 실행(GUI 또는 `--nogui`), 감시 시작·중지와 설정 UI 조작을 직접 수행한다.
 - Knowledge 관리자: `문서목록.json`을 직접 편집하는 담당자. 주 사용자와 동일
   인물일 수 있다. 시스템은 이 파일을 쓰지 않는다(<PRD-U005>).
 
@@ -98,19 +107,20 @@ AI 분류를 보조 수단으로 사용하는 Hybrid 구조다.
 - OS: 로컬 Windows PC. 네트워크 드라이브·OneDrive 동기화 폴더를
   `project_root`·`source_root`로 지정할 수 있다.
 - 런타임: Python 3.11 이상.
-- 실행 형태: 온디맨드 CLI 1회 실행 + 로컬 Python GUI 설정 도구. 상주 프로세스
-  없음.
+- 실행 형태: 사용자가 실행해 둔 동안 `source_root`를 상주 감시하는 프로세스 1개.
+  GUI 모드(기본: 설정·감시 시작/중지·대시보드·트레이) 또는 무GUI 모드(`--nogui`).
 - 배포 형태: 로컬 Python 애플리케이션(소스 실행 또는 단일 실행 파일 패키징).
 
 ### 5.3 시스템 구성(3계층)
 1. **데이터 계층** — `문서목록.json`(Knowledge, 읽기 전용)과
    `ledger.config.yaml`(Runtime Config, UI 편집 가능)을 분리해 보유한다
    (<SRS-F001>~<SRS-F003>).
-2. **처리 계층** — 파일 탐색 → Rule Engine → (필요 시) AI Classifier →
+2. **처리 계층** — 파일 감시·안정화 → (설정 시) 프로젝트 문서번호 매칭 →
+   Rule Engine → (필요 시) AI Classifier →
    Phase Resolver → File Mover → 관리대장 갱신 + 로그 기록 순의 파이프라인을
    구성한다(<SRS-F007>~<SRS-F034>).
-3. **설정 UI 계층** — Runtime Config만 편집·검증·저장한다. Knowledge 편집
-   기능은 제공하지 않는다(<SRS-F040>~<SRS-F043>).
+3. **GUI 계층** — Runtime Config만 편집·검증·저장하고, 감시 세션을 제어하며 처리
+   현황을 보여준다. Knowledge 편집 기능은 제공하지 않는다(<SRS-F040>~<SRS-F046>).
 
 ### 5.4 처리 흐름
 
@@ -121,15 +131,18 @@ AI 분류를 보조 수단으로 사용하는 Hybrid 구조다.
 flowchart TD
     A["실행 시작"] --> B["실행 전 사전 검증<br/><SRS-F004>"]
     B -->|실패| Z["실행 차단<br/>종료 코드 1"]
-    B -->|성공| C["파일 탐색<br/><SRS-F007>"]
-    C --> D["Rule Engine: abbr 정확 매치<br/><SRS-F011>"]
+    B -->|성공| C["파일 감지·안정화<br/><SRS-F009>"]
+    C --> DN["문서번호 매치<br/><SRS-F018>"]
+    DN -->|매치·해석 성공| R0["Rule-ABBR 확정<br/>confidence 1.0"]
+    DN -->|미설정 또는 실패| D["Rule Engine: abbr 정확 매치<br/><SRS-F011>"]
     D -->|매치 1건| R1["Rule-ABBR 확정<br/>confidence 1.0"]
     D -->|매치 없음/복수| E["Rule Engine: full_name 단어 매치<br/><SRS-F012>"]
     E -->|단독 최고 비율 그리고 임계 이상| R2["Rule-FULL 확정"]
     E -->|실패 또는 동률 모호| F["AI 분류 호출<br/><SRS-F014>"]
     F -->|유효 응답 그리고 임계 이상| R3["AI 확정"]
     F -->|실패 또는 임계 미만| G["Fallback<br/><SRS-F022>"]
-    R1 --> H["Phase 폴더 배치<br/><SRS-F020>"]
+    R0 --> H["Phase 폴더 배치<br/><SRS-F020>"]
+    R1 --> H
     R2 --> H
     R3 --> H
     G --> I["project_root 배치"]
@@ -159,7 +172,7 @@ flowchart TD
 상위요건: <PRD-F001>, <PRD-U005>, <PRD-N006>
 시스템은 `문서목록.json`을 읽기 전용 Knowledge Layer로 취급한다. 시스템의 어떤
 실행 경로도 이 파일에 쓰기·이름 변경·삭제 연산을 수행하지 않는다. 이 파일은
-매 실행 시작 시점에 1회 로드하며, 실행 중에는 메모리 상의 사본만 사용한다.
+프로그램 기동 시 1회 로드하며, 프로그램이 종료될 때까지 메모리 상의 사본만 사용한다.
 파일이 존재하지 않거나 JSON 파싱에 실패하면 <SRS-F004>의 사전 검증에서 실행을
 차단한다.
 
@@ -168,7 +181,8 @@ flowchart TD
 시스템은 `ledger.config.yaml`을 Runtime Config Layer로 취급하며, 8.2절 스키마의
 다음 8개 키를 보유한다: `project_root`, `workbook.path`, `roots.source_root`,
 `roots.phase_folders`, `rule.full_name_min_ratio`, `ai.confidence_threshold`,
-`fallback.enabled`, `duplicate.suffix_start`. CLI 실행 시작 시 이 파일을 로드하고,
+`fallback.enabled`, `duplicate.suffix_start`. 선택 키 그룹 `project_doc_info`(8.2절)를
+함께 보유할 수 있다. 프로그램 기동 시 이 파일을 로드하고,
 설정 UI가 저장을 요청하면 <SRS-F042>의 유효성 검증을 통과한 경우에만 동일 경로에
 YAML로 기록한다. 파일이 존재하지 않거나 YAML 파싱에 실패하면 <SRS-F004>의 사전
 검증에서 실행을 차단한다.
@@ -184,7 +198,8 @@ resolve한다. 현재 작업 디렉토리(CWD)를 기준으로 경로를 해석�
 
 [SRS-F004] 실행 전 사전 검증
 상위요건: <PRD-F017>
-시스템은 파일 탐색 이전에 다음 5개 항목을 순서대로 검증한다.
+시스템은 프로그램 기동 시, 감시 세션을 시작하기 전에 다음 6개 항목을 순서대로
+검증한다.
 (1) `ledger.config.yaml` 파싱 성공 및 8개 필수 키 존재.
 (2) `문서목록.json` 파싱 성공 및 8.3절 스키마 준수.
 (3) `roots.phase_folders`의 키 집합이 `문서목록.json`에 등장하는 phase 값 집합과
@@ -193,8 +208,11 @@ resolve한다. 현재 작업 디렉토리(CWD)를 기준으로 경로를 해석�
     디렉토리가 존재하고 읽기·쓰기 접근이 가능.
 (5) `rule.full_name_min_ratio`가 0.0 초과 1.0 이하, `ai.confidence_threshold`가
     0.0 이상 1.0 이하, `duplicate.suffix_start`가 1 이상의 정수.
-5개 중 1개라도 실패하면 어떤 파일도 이동하지 않고 관리대장도 갱신하지 않은 채
-종료 코드 1로 실행을 차단하며, 실패한 검증 항목 번호와 원인 메시지를 stderr와
+(6) `app.config.yaml`(8.2.1절)의 `watch.scan_interval_seconds`·`watch.file_stable_seconds`가
+    1 이상의 정수이고, `project_doc_info`의 4개 키가 모두 지정되었거나 모두 비어
+    있으며, 지정된 경우 `path`의 xlsx 파일이 존재.
+6개 중 1개라도 실패하면 GUI 창을 열지 않고 감시를 시작하지 않으며, 어떤 파일도
+이동하지 않고 관리대장도 갱신하지 않은 채 종료 코드 1로 실행을 차단하며, 실패한 검증 항목 번호와 원인 메시지를 stderr와
 로그에 기록한다. 단, 설정 파일을 찾지 못하거나 항목 (1)이 실패해(파싱 실패 또는
 `project_root` 키 누락 등) `project_root`를 확정할 수 없는 경우에는 로그
 위치(<SRS-F036>)를 알 수 없으므로 원인 메시지를 stderr에만 기록한다.
@@ -203,33 +221,43 @@ resolve한다. 현재 작업 디렉토리(CWD)를 기준으로 경로를 해석�
 상위요건: <PRD-A007>, <PRD-U005>
 시스템은 `문서목록.json`의 내용을 캐시 파일·데이터베이스·코드에 복제해 보관하지
 않는다. 사용자가 `문서목록.json`을 수정한 뒤 별도의 반영·동기화 절차 없이
-CLI를 재실행하면, 그 실행의 분류 판정은 수정된 내용만을 기준으로 수행된다.
+프로그램을 다시 시작하면, 그 이후의 분류 판정은 수정된 내용만을 기준으로 수행된다.
 
 [SRS-F006] 분류 기준·설정의 외부 파일화
 상위요건: <PRD-N006>, <PRD-F001>, <PRD-F002>
 시스템은 Phase 목록, artifact 약어·정식명, 경로, 매치 비율 임계값, AI 임계값,
 Fallback 사용 여부, 중복 suffix 시작값을 소스 코드에 상수로 하드코딩하지 않는다.
-이 값들은 전부 `문서목록.json` 또는 `ledger.config.yaml`에서 읽는다.
+이 값들은 전부 `문서목록.json` 또는 `ledger.config.yaml`에서 읽는다. 감시 폴링
+주기와 안정화 시간은 `app.config.yaml`(8.2.1절)에서 읽는다.
 단, 요구사항 <SRS-F012>의 confidence 등급값(0.8, 0.6)과 요구사항 <SRS-F011>의
 abbr confidence 값(1.0)은 분류 알고리즘의 일부로 코드에 정의한다.
 
-### 6.2 파일 탐색
+### 6.2 파일 감시
 
-[SRS-F007] 대상 파일 탐색
+[SRS-F007] 대상 파일 조건
 상위요건: <PRD-F004>, <PRD-U001>
 시스템은 `roots.source_root` 디렉토리의 직속 항목 중 일반 파일만 처리 대상으로
-수집한다. 하위 디렉토리는 재귀 탐색하지 않는다. 다음은 대상에서 제외한다:
+한다. 하위 디렉토리는 감시·탐색하지 않는다. 다음은 대상에서 제외한다:
 디렉토리, 심볼릭 링크, 파일명이 `.` 또는 `~$`로 시작하는 파일, 크기 0바이트인
-파일. 수집된 각 파일은 초기 상태 `Ready`를 가진다. 수집 결과가 0건이면 시스템은
-관리대장을 갱신하지 않고 종료 코드 0으로 정상 종료하며, 로그에 대상 0건을
-기록한다.
+파일. <SRS-F009>로 감지된 각 대상 파일은 초기 상태 `Ready`를 가진다.
 
 [SRS-F008] 처리 순서와 독립성
 상위요건: <PRD-F004>
-시스템은 수집된 파일을 파일명 오름차순(대소문자 무시, 유니코드 코드포인트
-기준)으로 1건씩 순차 처리한다. 파일 1건의 처리 실패는 다른 파일의 처리를
+시스템은 감지된 파일을 감지 순서대로 1건씩 순차 처리하며, 동시에 2건 이상의
+파일을 처리하지 않는다. 파일 1건의 처리 실패는 다른 파일의 처리를
 중단시키지 않는다. 처리 중 예외가 발생한 파일은 상태 `Error`로 기록하고
 (<SRS-F025>) 다음 파일 처리를 계속한다.
+
+[SRS-F009] 상주 감시와 안정화 대기
+상위요건: <PRD-F020>, <PRD-U001>
+시스템은 감시 세션(<SRS-F044>) 동안 `roots.source_root`를 상주 감시한다. watchdog
+라이브러리를 사용할 수 있으면 직속 파일의 생성·수정 이벤트로, 사용할 수 없으면
+`watch.scan_interval_seconds`초 주기로 디렉토리 직속 파일 목록을 다시 읽어 후보를
+찾는다. 이벤트 방식에서는 감시 시작 후 생성·수정된 파일이, 폴링 방식에서는 각
+주기 시점에 존재하는 직속 파일 전부가 후보가 된다. 후보 파일은 0.5초 간격 확인에서
+크기와 수정 시각이 `watch.file_stable_seconds`초 동안 변하지 않은 뒤에만 처리한다.
+같은 (절대경로, 크기, 수정 시각) 조합의 파일은 한 감시 세션에서 1회만 처리한다.
+감시가 중지되면 안정화 대기 중인 후보는 처리하지 않는다.
 
 ### 6.3 Rule Engine
 
@@ -241,9 +269,28 @@ abbr confidence 값(1.0)은 분류 알고리즘의 일부로 코드에 정의한
 취급하고, 길이 0인 토큰은 버린다. 모든 토큰은 비교 전에 소문자로 정규화한다.
 확장자가 없는 파일명은 전체 문자열을 토큰화 대상으로 한다.
 
+[SRS-F018] 프로젝트 문서번호 매칭
+상위요건: <PRD-F019>, <PRD-F004>
+`project_doc_info`의 `path`·`sheet_name`·`column_title_doc_no`·`column_title_abbr`
+4개 키가 모두 지정된 경우, 시스템은 프로그램 기동 시 `project_root` 기준으로
+해석한 `path`의 xlsx에서 `sheet_name` 시트를 읽기 전용으로 1회 읽는다. 1행을
+헤더로 보고, `column_title_doc_no` 열(문서번호)과 `column_title_abbr` 열(문서구분)
+값이 모두 비어 있지 않은 2행 이후의 행을 매핑으로 적재한다. 시트나 두 헤더 중
+하나가 없으면 매핑은 0건이다. 비교 시 문서번호·문서구분·파일명은 영문자와 숫자만
+남기고 대문자로 바꿔 정규화한다. 시스템은 정규화된 파일명(확장자 포함)에
+정규화된 문서번호가 포함되는 첫 매핑을, 정규화된 문서번호가 긴 순서로 찾는다.
+찾은 매핑의 문서구분 값은 (1) 정규화 값이 같은 `abbr`, 없으면 (2) 정규화된
+문서구분에 정규화된 `abbr`가 포함되는 artifact 중 `abbr`가 가장 긴 것으로
+해석한다. 해석에 성공하면 그 artifact를 확정하고 `classification_method`를
+`Rule-ABBR`, confidence를 1.0으로 설정하며 abbr·full_name 매칭과 AI 분류를
+수행하지 않는다. 문서번호를 찾지 못하거나 해석에 실패하면 <SRS-F011>로 넘어간다.
+4개 키가 모두 비어 있으면 이 단계를 수행하지 않는다. 시스템은 이 xlsx에 쓰지
+않는다.
+
 [SRS-F011] Rule Engine — abbr 정확 매치
 상위요건: <PRD-F005>, <PRD-A001>
-시스템은 `문서목록.json`의 각 artifact `abbr`를 소문자로 정규화한 뒤,
+시스템은 <SRS-F018>의 문서번호 매치가 성립하지 않은 파일에 대해, `문서목록.json`의
+각 artifact `abbr`를 소문자로 정규화한 뒤,
 요구사항 <SRS-F010>의 토큰 집합에 그와 완전히 동일한 토큰이 존재하는지
 검사한다. 부분 문자열 포함은 매치로 인정하지 않는다. 매치된 artifact가 정확히 1건이면 그
 artifact를 확정하고 `classification_method`를 `Rule-ABBR`,
@@ -401,7 +448,9 @@ Rule 분류와 AI 분류가 모두 실패한 파일의 배치 경로는
 상위요건: <PRD-F014>, <PRD-N005>
 `classification_method` 컬럼의 값은 `Rule-ABBR`, `Rule-FULL`, `AI`, `Fallback`
 4개 중 하나다. 이 외의 값은 기록하지 않는다. 값과 판정 경로의 대응은
-요구사항 <SRS-F011>, <SRS-F013>, <SRS-F016>, <SRS-F022>에 정의한 바와 같다.
+요구사항 <SRS-F011>, <SRS-F013>, <SRS-F016>, <SRS-F018>, <SRS-F022>에 정의한 바와 같다.
+`Rule-ABBR`은 abbr 정확 매치(<SRS-F011>)와 프로젝트 문서번호 매칭(<SRS-F018>)
+양쪽에 쓰며, 둘은 `match_evidence`(<SRS-F035>)로 구별한다.
 
 [SRS-F032] ai_confidence 기록 조건
 상위요건: <PRD-F014>, <PRD-F009>
@@ -412,18 +461,20 @@ confidence 값을 소수점 둘째 자리까지 기록한다. `Rule-ABBR`, `Rule
 
 [SRS-F033] 관리대장 쓰기 안전성
 상위요건: <PRD-U003>, <PRD-N004>
-시스템은 관리대장 워크북을 열기 전에 원본을 `<원본파일명(확장자 제외)>_<run_id>.xlsx`
-이름으로 `project_root` 하위 `backup` 디렉토리에 복사한다. 워크북이 다른
-프로세스에 의해 배타적으로 잠겨 있으면 파일을 이동하지 않고 종료 코드 2로
-종료하며, "관리대장을 닫은 뒤 재실행"을 안내하는 메시지를 stderr와 로그에
-기록한다. 시스템은 관리대장의 기존 행·시트·수식·서식을 변경하지 않고, 지정된
+시스템은 감시 세션을 시작할 때 관리대장 워크북을 열기 전에 원본을
+`<원본파일명(확장자 제외)>_<run_id>.xlsx` 이름으로 `project_root` 하위 `backup`
+디렉토리에 복사한다. 감시 세션 시작 시 워크북이 다른 프로세스에 의해 배타적으로
+잠겨 있으면 감시를 시작하지 않고, 무GUI 모드에서는 종료 코드 2로 종료하며 GUI
+모드에서는 감시 상태를 중지로 둔다. 두 경우 모두 "관리대장을 닫은 뒤 다시 시작"을
+안내하는 메시지를 stderr(GUI 모드는 화면)와 로그에 기록한다. 감시 세션 중 잠김
+등으로 행 기록이 실패하면 <SRS-F025>를 따른다. 시스템은 관리대장의 기존 행·시트·수식·서식을 변경하지 않고, 지정된
 대상 시트의 마지막 데이터 행 아래에 새 행만 추가한다.
 
 ### 6.8 로그
 
 [SRS-F034] 실행 로그 기록 항목
 상위요건: <PRD-F018>, <PRD-N005>
-시스템은 실행마다 8.5절 스키마의 로그 레코드를 기록한다. 실행 단위 레코드는
+시스템은 실행 단위(감시 세션)마다 8.5절 스키마의 로그 레코드를 기록한다. 실행 단위 레코드는
 실행 시각(ISO 8601, 로컬 타임존 오프셋 포함), `run_id`, 설정 파일 절대경로,
 설정 파일 버전(`config_version`, 없으면 파일 내용의 SHA-256 앞 8자리),
 Knowledge 파일 절대경로를 포함한다. 파일 단위 레코드는 원본 파일명,
@@ -433,7 +484,9 @@ fallback 여부(`is_fallback`, 불리언)를 포함한다.
 [SRS-F035] 매칭 근거 기록
 상위요건: <PRD-F018>, <PRD-N005>
 `match_evidence` 필드는 판정 경로별로 다음을 포함한다.
-- `Rule-ABBR`: 매치된 abbr 문자열과 매치된 파일명 토큰.
+- `Rule-ABBR`(abbr 매치, <SRS-F011>): 매치된 abbr 문자열과 매치된 파일명 토큰.
+- `Rule-ABBR`(문서번호 매칭, <SRS-F018>): 매치된 문서번호, 그 행의 문서구분 값,
+  해석된 abbr.
 - `Rule-FULL`: 매치된 full_name, `matched`/`total` 단어 수, `ratio`(소수점 셋째
   자리), 매치된 단어 목록.
 - `AI`: AI 호출 사유(조건 번호 1/2/3), 반환된 `artifact_abbr`·`phase`·
@@ -453,10 +506,11 @@ fallback 여부(`is_fallback`, 불리언)를 포함한다.
 
 [SRS-F040] UI 제공 항목
 상위요건: <PRD-F015>, <PRD-U004>
-로컬 Python UI는 다음 7개 설정 항목의 조회·편집과 저장 동작을 제공한다:
+로컬 Python UI는 다음 11개 설정 항목의 조회·편집과 저장 동작을 제공한다:
 `project_root`, `roots.source_root`, `roots.phase_folders`,
 `rule.full_name_min_ratio`, `ai.confidence_threshold`, `fallback.enabled`,
-`duplicate.suffix_start`. 디렉토리 경로 항목은 직접 입력과 폴더 선택 대화상자
+`duplicate.suffix_start`, `project_doc_info.path`, `project_doc_info.sheet_name`,
+`project_doc_info.column_title_doc_no`, `project_doc_info.column_title_abbr`. 디렉토리 경로 항목은 직접 입력과 폴더 선택 대화상자
 양쪽을 지원한다. `roots.phase_folders`는 phase 키와 폴더 상대경로 쌍의 목록으로
 표시하며, 행 추가·삭제·수정을 지원한다.
 
@@ -473,7 +527,8 @@ UI는 저장 요청 시 다음을 검증한다: `rule.full_name_min_ratio`가 0.
 이하의 실수, `ai.confidence_threshold`가 0.0 이상 1.0 이하의 실수,
 `duplicate.suffix_start`가 1 이상의 정수, `project_root`와
 `roots.source_root`가 존재하는 디렉토리, `roots.phase_folders`의 키 집합이
-`문서목록.json`의 phase 값 집합과 일치, `workbook.path`의 상위 디렉토리가 존재.
+`문서목록.json`의 phase 값 집합과 일치, `workbook.path`의 상위 디렉토리가 존재,
+`project_doc_info`의 4개 키가 모두 지정되었거나 모두 비어 있음.
 1개라도 실패하면 파일에 쓰지 않고 실패 항목과 사유를 화면에 표시한다.
 
 [SRS-F043] UI 설정 영속화
@@ -482,8 +537,36 @@ UI는 저장 요청 시 다음을 검증한다: `rule.full_name_min_ratio`가 0.
 반영된다.
 시스템은 기존 파일을 임시 파일에 먼저 기록한 뒤 교체하는 방식으로 저장하여,
 저장 도중 실패 시 기존 설정 파일이 손상되지 않도록 한다. 저장 완료 후 UI를
-종료하고 재실행하면 저장된 값이 그대로 표시된다. UI가 저장한 설정은 이후의
-CLI 실행에 별도 절차 없이 적용된다.
+종료하고 재실행하면 저장된 값이 그대로 표시된다. UI가 저장한 설정은 프로그램을
+다시 시작하면 별도 절차 없이 적용된다.
+
+[SRS-F044] 감시 세션 제어
+상위요건: <PRD-F020>
+GUI 모드에서 시스템은 사전 검증(<SRS-F004>)을 통과하면 창을 열고 감시를 시작하지
+않은 상태(중지)로 대기한다. `감시 시작` 버튼은 감시 세션을 시작하고, `감시 중지`
+버튼은 진행 중인 감시 세션을 끝낸다. 무GUI 모드(`--nogui`)에서 시스템은 사전
+검증 통과 직후 감시 세션을 시작하고, 사용자가 Ctrl+C로 중단하면 세션을 끝낸 뒤
+종료한다. 감시 세션의 시작과 중지는 로그에 기록한다. GUI 창을 닫거나 트레이
+메뉴의 `프로그램 종료`를 선택하면 진행 중인 감시 세션을 중지한 뒤 프로그램을
+종료한다.
+
+[SRS-F045] 처리 현황 대시보드
+상위요건: <PRD-F021>
+GUI의 대시보드 탭은 로그 레코드(<SRS-F034>)를 받아 다음을 표시한다: 감시 상태
+(`Running`/`Stopped`), 최근 처리 시각, 프로그램 기동 후 성공·실패 건수, 처리한
+파일별 요약 목록(파일명, 배치 폴더, 시각, 결과 `성공`/`실패`, 최대 500행이며 초과
+시 가장 오래된 행부터 제거), 목록에서 선택한 파일의 처리 이벤트 상세(시각, 레벨,
+이벤트, 메시지). 실패 행과 `ERROR` 레벨 이벤트는 빨간색으로 표시한다. `로그 복사`
+버튼은 요약 목록 각 행을 `[시각] [결과] 파일명 | 배치 폴더` 형식의 줄로 클립보드에
+복사한다. 대시보드는 표시만 하며 파일·관리대장·설정에 쓰지 않는다.
+
+[SRS-F046] 시스템 트레이 최소화
+상위요건: <PRD-F021>
+대시보드의 `트레이로 최소화` 버튼은 GUI 창을 숨기고 시스템 트레이 아이콘을
+표시한다. 트레이 메뉴는 `열기`(기본 동작, 창을 다시 표시하고 트레이 아이콘을
+제거)와 `프로그램 종료`(<SRS-F044>)를 제공한다. 트레이 기능에 필요한 라이브러리를
+불러올 수 없으면 원인을 담은 오류 대화상자를 표시하고 창을 숨기지 않는다. 트레이
+최소화는 감시 세션 상태를 바꾸지 않는다.
 
 ## 7. 비기능 요구사항
 
@@ -530,15 +613,15 @@ Phase 폴더, `project_root` 직속, `source_root`(Fallback 비활성 또는 `Er
 
 [SRS-N006] Knowledge 불변성
 상위요건: <PRD-N006>, <PRD-U005>, <PRD-F001>
-CLI 실행과 UI 조작을 통틀어 `문서목록.json`의 내용·수정 시각·권한은 변경되지
+감시 처리와 UI 조작을 통틀어 `문서목록.json`의 내용·수정 시각·권한은 변경되지
 않는다. 회귀 테스트는 전체 파이프라인 실행 전후 이 파일의 SHA-256 해시와 수정
 시각이 동일함을 확인한다.
 
 [SRS-N007] 처리 성능
 상위요건: 설계 결정 (성능 목표, PRD 근거 없음)
-AI 분류 호출을 제외한 파일 1건당 처리 시간(탐색·Rule 판정·이동·관리대장 행
-기록)은 로컬 디스크 기준 1초 이내다. `문서목록.json`의 artifact 항목 200건,
-입력 파일 100건 규모의 1회 실행은 AI 호출을 제외하고 60초 이내에 완료된다.
+안정화 대기와 AI 분류 호출을 제외한 파일 1건당 처리 시간(Rule 판정·이동·관리대장
+행 기록)은 로컬 디스크 기준 1초 이내다. `문서목록.json`의 artifact 항목 200건,
+입력 파일 100건의 연속 처리는 안정화 대기와 AI 호출을 제외하고 60초 이내에 완료된다.
 
 [SRS-N008] 오류 보고 완결성
 상위요건: 설계 결정 (<SRS-F004>, <SRS-F025> 오류 경로 대응)
@@ -554,24 +637,33 @@ AI 분류 호출을 제외한 파일 1건당 처리 시간(탐색·Rule 판정·
 ### 8.1 CLI 인터페이스
 
 ```
-idma run   [--config <경로>] [--dry-run]
-idma ui    [--config <경로>]
+<프로그램> [--nogui] [--ledger-config <경로>] [--app-config <경로>]
 ```
 
-- `--config`: `ledger.config.yaml` 경로. 생략 시 CWD의 `ledger.config.yaml`을
-  찾고, 없으면 종료 코드 1. 설정 파일을 찾은 뒤의 모든 경로 해석은 <SRS-F003>에
-  따라 `project_root` 기준이다.
-- `--dry-run`: 파일 이동·관리대장 갱신·관리대장 백업(<SRS-F033>)·설정 저장을
-  수행하지 않고, 각 파일의 판정 결과와 배치 예정 경로만 stdout에 출력한다. 로그는
-  기록한다.
-- 종료 코드: 0=정상 종료(처리 대상 0건 포함), 1=사전 검증 실패 또는 설정 오류,
-  2=관리대장 접근 불가(잠김·권한), 3=1건 이상의 파일이 `Error` 상태로 종료.
-- stdout: 처리 요약(대상 건수, method별 건수, Error 건수). stderr: 오류·경고.
+- `<프로그램>`: 패키징된 실행 파일 또는 `python -m app.main`.
+- 옵션 없음: GUI 모드(<SRS-F044>). `--nogui`: 무GUI 모드로 기동 즉시 감시 세션을
+  시작하고 Ctrl+C까지 실행한다.
+- `--ledger-config`: `ledger.config.yaml` 경로. `--app-config`: `app.config.yaml`
+  경로(8.2.1절). 생략 시 각각 프로그램과 함께 배포된 `models` 폴더의 같은 이름
+  파일을 쓴다. 설정 파일을 찾은 뒤의 모든 경로 해석은 <SRS-F003>에 따라
+  `project_root` 기준이다.
+- 종료 코드: 0=정상 종료(감시 중단 포함), 1=사전 검증 실패 또는 설정 오류,
+  2=감시 세션 시작 시 관리대장 접근 불가(잠김·권한, 무GUI 모드), 3=무GUI 모드의
+  감시 세션 중 1건 이상의 파일이 `Error` 상태로 끝난 뒤 중단.
+- stdout: 무GUI 모드 중단 시 처리 요약(대상 건수, method별 건수, Error 건수).
+  stderr: 오류·경고.
+- 2026-10-10 사용자 결정 Q02로 1회 실행 명령(`idma run`, `idma ui`)과 `--dry-run`은
+  이 인터페이스로 대체됐다.
 
 ### 8.2 Runtime Config 스키마 (`ledger.config.yaml`)
 
 ```yaml
 project_root: "D:/WORK/PRJ-A"        # 필수. 절대경로 또는 설정 파일 기준 상대경로
+project_doc_info:                     # 선택. 4개 키는 모두 지정하거나 모두 생략(<SRS-F018>)
+  path: "0.관리/종합관리.xlsx"         # project_root 기준 상대경로 허용
+  sheet_name: "문서목록"
+  column_title_doc_no: "문서번호"
+  column_title_abbr: "문서구분"
 config_version: "1.0.0"              # 선택. 없으면 파일 SHA-256 앞 8자리를 사용
 workbook:
   path: "0.관리/제출물관리대장.xlsx"   # 필수. project_root 기준 상대경로 허용
@@ -597,6 +689,17 @@ duplicate:
   confidence 등급(0.8)은 이 임계를 넘고 하위 등급(0.6)은 넘지 못하므로,
   이 기본값에서 `ratio` 0.7 미만의 약한 Rule 판정은 AI 재확인을 거친다.
 - 키가 누락되거나 값이 위 제약을 벗어나면 <SRS-F004>가 실행을 차단한다.
+
+### 8.2.1 감시 설정 스키마 (`app.config.yaml`)
+
+```yaml
+watch:
+  scan_interval_seconds: 60   # 선택. 폴링 주기(초), 1 이상의 정수. 없으면 60
+  file_stable_seconds: 3      # 선택. 안정화 시간(초), 1 이상의 정수. 없으면 3
+```
+
+- 위 2개 키만 시스템 동작에 쓰며, 이 파일의 다른 키는 무시한다(<SRS-F009>).
+- 값이 1 미만이면 <SRS-F004> 항목 (6)이 실행을 차단한다.
 - 위 8개 필수 항목 외의 키는 무시하지 않고 그대로 보존해 저장한다(<SRS-F043>).
 
 ### 8.3 Knowledge 스키마 (`문서목록.json`)
@@ -646,7 +749,7 @@ duplicate:
 
 ### 8.5 로그 레코드 스키마 (`logs/idma-<YYYYMMDD>.jsonl`)
 
-실행 단위 레코드(실행마다 1건, `type: "run"`):
+실행 단위 레코드(감시 세션마다 1건, `type: "run"`):
 
 ```json
 {
@@ -699,9 +802,13 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
 
 ### 8.7 설정 UI 인터페이스
 
-- 실행 형태: `idma ui`로 기동하는 로컬 Python GUI 창. 웹 서버·원격 접속 형태를
-  사용하지 않는다.
-- 화면 구성: 경로 설정 영역(`project_root`, `roots.source_root`), Phase 폴더 매핑 표(`roots.phase_folders`), 분류 파라미터
+- 실행 형태: GUI 모드(8.1절)로 기동하는 로컬 Python GUI 창. 웹 서버·원격 접속
+  형태를 사용하지 않는다.
+- 대시보드 탭: <SRS-F045>의 감시 상태·처리 현황·로그 복사와 <SRS-F046>의
+  `트레이로 최소화` 버튼.
+- 공통 버튼: `설정 저장`, `감시 시작`, `감시 중지`(<SRS-F044>).
+- 화면 구성: 경로 설정 영역(`project_root`, `roots.source_root`,
+  `project_doc_info` 4개 키), Phase 폴더 매핑 표(`roots.phase_folders`), 분류 파라미터
   영역(`rule.full_name_min_ratio`, `ai.confidence_threshold`), 정책 영역
   (`fallback.enabled`, `duplicate.suffix_start`), 저장 버튼.
 - `workbook.path`는 UI 편집 항목이 아니다(<SRS-F040>, <PRD-F015>). <SRS-F042>는
@@ -719,7 +826,9 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
 - 모든 경로 해석은 `project_root` 기준이며 CWD 기준 해석 코드는 존재하지 않는다
   (<SRS-F003>).
 - 시스템은 `문서목록.json`에 어떤 쓰기 연산도 수행하지 않는다(<SRS-N006>).
-- 시스템은 상주하지 않는다. 데몬·폴링·스케줄러 등록 코드를 포함하지 않는다.
+- 상주 감시는 사용자가 프로그램을 실행해 둔 동안에만 동작한다. OS 서비스·작업
+  스케줄러 등록이나 OS 시작 시 자동 실행 코드는 포함하지 않는다(<SRS-F009>,
+  <SRS-F044>).
 - Rule Engine은 결정론적이다. 동일 입력·동일 Knowledge·동일 설정에 대해 항상
   동일한 판정을 낸다. 비결정성은 AI 분류 경로에만 존재할 수 있다.
 - AI 분류기 구현체를 사용할 수 없는 환경에서도 시스템은 기동·실행되어야 하며,
@@ -736,7 +845,7 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
 
 | PRD ID | SRS ID |
 |---|---|
-| <PRD-U001> | <SRS-F007>, <SRS-F020> |
+| <PRD-U001> | <SRS-F007>, <SRS-F009>, <SRS-F020> |
 | <PRD-U002> | <SRS-F022>, <SRS-N004> |
 | <PRD-U003> | <SRS-F030>, <SRS-F033>, <SRS-N005> |
 | <PRD-U004> | <SRS-F040>, <SRS-F043> |
@@ -752,7 +861,7 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
 | <PRD-F001> | <SRS-F001>, <SRS-F006>, <SRS-N006>, 8.3절 |
 | <PRD-F002> | <SRS-F002>, <SRS-F006>, <SRS-F023>, <SRS-F042>, 8.2절 |
 | <PRD-F003> | <SRS-F003> |
-| <PRD-F004> | <SRS-F007>, <SRS-F008>, 5.4절 그림 5-1 |
+| <PRD-F004> | <SRS-F007>, <SRS-F008>, <SRS-F018>, 5.4절 그림 5-1 |
 | <PRD-F005> | <SRS-F010>, <SRS-F011> |
 | <PRD-F006> | <SRS-F012> |
 | <PRD-F007> | <SRS-F013> |
@@ -767,11 +876,14 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
 | <PRD-F016> | <SRS-F041> |
 | <PRD-F017> | <SRS-F004>, <SRS-F042> |
 | <PRD-F018> | <SRS-F034>, <SRS-F035>, <SRS-F036>, <SRS-N005>, 8.5절 |
+| <PRD-F019> | <SRS-F018>, <SRS-F031>, <SRS-F035>, <SRS-F040>, 8.2절 |
+| <PRD-F020> | <SRS-F009>, <SRS-F044>, 8.1절, 8.2.1절 |
+| <PRD-F021> | <SRS-F045>, <SRS-F046>, 8.7절 |
 | <PRD-N001> | <SRS-F003>, <SRS-N001> |
 | <PRD-N002> | <SRS-F002>, <SRS-N002> |
 | <PRD-N003> | <SRS-F014>, <SRS-F016>, <SRS-F017>, <SRS-N003> |
 | <PRD-N004> | <SRS-F022>, <SRS-F023>, <SRS-F024>, <SRS-F033>, <SRS-N004> |
-| <PRD-N005> | <SRS-F030>, <SRS-F031>, <SRS-F034>, <SRS-F035>, <SRS-N005> |
+| <PRD-N005> | <SRS-F025>, <SRS-F030>, <SRS-F031>, <SRS-F034>, <SRS-F035>, <SRS-N005> |
 | <PRD-N006> | <SRS-F001>, <SRS-F006>, <SRS-F017>, <SRS-N002>, <SRS-N006> |
 
 ### 부록 B. 설계 결정 목록 (PRD에 근거 값이 없어 본 SRS에서 확정한 항목)
@@ -783,24 +895,26 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
 | AI 호출 타임아웃 | 30초 | 로컬 실행 도구의 응답성과 원격 API 지연을 함께 고려한 상한. 초과 시 Fallback으로 처리해 실행이 멈추지 않게 한다(<SRS-F017>) |
 | 중복 suffix 상한 | `duplicate.suffix_start + 999` | 동일 파일명 무한 반복 시 무한 루프 방지(<SRS-F021>) |
 | 로그 형식·위치 | `project_root/logs/idma-<YYYYMMDD>.jsonl`, JSON Lines, UTF-8 | <PRD-F018>이 기록 항목만 정의하고 형식을 정하지 않음. 기계 판독과 append 안전성을 위해 JSON Lines 채택(<SRS-F036>, 8.5절) |
-| 관리대장 백업 | 실행 전 `project_root/backup/`에 `<파일명>_<run_id>.xlsx` 복사 | <PRD-N004> 운영 안정성을 관리대장 워크북까지 확장 적용(<SRS-F033>) |
-| CLI 종료 코드 체계 | 0/1/2/3 | <PRD-F017>의 "실행 차단"을 호출자가 판별 가능한 형태로 구체화(8.1절) |
+| 관리대장 백업 | 감시 세션 시작 시 `project_root/backup/`에 `<파일명>_<run_id>.xlsx` 복사 | <PRD-N004> 운영 안정성을 관리대장 워크북까지 확장 적용(<SRS-F033>) |
+| CLI 종료 코드 체계 | 0/1/2/3 (2·3은 무GUI 모드) | <PRD-F017>의 "실행 차단"을 호출자가 판별 가능한 형태로 구체화(8.1절) |
 | 파일 탐색 범위 | `source_root` 직속 파일만, 비재귀 | PRD가 재귀 여부를 정하지 않음. Phase 폴더가 `project_root` 하위에 있어 재귀 탐색 시 배치 완료 파일의 재수집 위험이 있으므로 비재귀로 확정(<SRS-F007>) |
 | 성능 목표 | 파일 1건당 1초, 100건 60초(AI 제외) | PRD에 성능 근거 없음. 로컬 디스크 파일 이동과 워크북 행 추가의 실측 가능한 상한으로 설정(<SRS-N007>) |
-| `--dry-run` 시 관리대장 백업 | 수행하지 않음 | 2026-10-09 명확화. `--dry-run`은 관리대장을 갱신하지 않으므로 백업할 쓰기가 없다(8.1절, <SRS-F033>) |
+| `--dry-run` | 삭제 | 2026-10-10 사용자 결정 Q02로 1회 실행 명령이 상주 감시로 대체됐고 현행 코드에 없다. 2026-10-09의 "`--dry-run` 시 백업 안 함" 명확화도 함께 소멸(8.1절) |
 | 관리대장 행 기록 실패 처리 | 이동한 파일을 `source_root`로 되돌리고 `Error`, 결과는 로그에만 기록 | 2026-10-09 명확화. 이동 후 행 기록 순서(<SRS-F024>)와 `Error` 파일의 `source_root` 보존(<SRS-F025>)을 함께 만족시키고, 행 수 대조 예외를 <SRS-N005>에 명시 |
 | `project_root` 확정 불가 시 오류 보고 위치 | stderr 전용 | 2026-10-09 명확화, 2026-10-10 범위 정렬(설정 파일 없음·파싱 실패·키 누락). `project_root`를 확정할 수 없으면 로그 위치(<SRS-F036>)가 정해지지 않는다(<SRS-F004>, <SRS-N008>) |
 | 사전 검증 (4) 경로 대상 | `project_root`·`roots.source_root`는 디렉토리 자체, `workbook.path`는 상위 디렉토리 | 2026-10-09 명확화. <SRS-F042>의 존재 검사 대상과 일치 |
 | UI의 `workbook.path` | 편집 항목 아님 | 2026-10-09 명확화. <SRS-F040>·<PRD-F015>의 7개 항목에 맞춰 8.7절 화면 구성을 정렬 |
-| 처리 순서 | 파일명 오름차순 | 실행 재현성 확보. 동일 입력에 대해 관리대장 행 순서가 동일하도록 함(<SRS-F008>) |
+| 처리 순서 | 감지 순서, 1건씩 직렬 | 2026-10-10 사용자 결정 Q02(상주 감시)로 1회 수집 집합이 없어져 파일명 오름차순을 대체. 직렬 처리는 기존 순차 처리 요구 유지(<SRS-F008>) |
+| 감시 방식·안정화 | watchdog 이벤트, 불가 시 폴링. 0.5초 간격 확인, 같은 (경로, 크기, 수정 시각)은 세션당 1회 | 2026-10-10 사용자 결정 Q02. 현행 코드 동작을 그대로 기술(<SRS-F009>) |
+| 문서번호 매칭 결과 표기 | `Rule-ABBR`, confidence 1.0, `match_evidence`로 구별 | 2026-10-10 사용자 결정 Q02. 현행 코드 표기를 유지하고 <SRS-F031> 값 도메인을 바꾸지 않음(<SRS-F018>, <SRS-F035>) |
 | AI 모델·API 선택 | SDD에서 구체화 | PRD가 구체 모델을 명시하지 않음. 본 SRS는 <SRS-F015>·<SRS-F017>·8.6절의 입출력 계약과 추상화 인터페이스만 고정하고, 구현체 선택은 설계 단계로 이관한다 |
 
 ### 부록 C. 요구사항 ID 색인
 
-- 기능 요구사항(34건): SRS-F001~F008, SRS-F010~F017, SRS-F020~F026,
-  SRS-F030~F036, SRS-F040~F043. 번호 사이의 빈 구간(F009, F018~F019,
-  F027~F029, F037~F039)은 6장의 절 경계를 나타내며, 향후 같은 절에 요구사항을
-  추가할 때 사용할 예비 번호다.
+- 기능 요구사항(39건): SRS-F001~F009, SRS-F010~F018, SRS-F020~F026,
+  SRS-F030~F036, SRS-F040~F046. 6.2절은 F007~F009, 6.3절은 F010~F013과
+  F018(예비 번호 사용)이다. 남은 빈 구간(F019, F027~F029, F037~F039)은 예비
+  번호다.
 - 비기능 요구사항(8건): SRS-N001~N008.
 
 ## 개정 이력
@@ -827,3 +941,13 @@ approval.
 - `00.04` (2026-10-10): stderr-only scope aligned between `<SRS-F004>` and `<SRS-N008>` (any case where
   `project_root` cannot be determined); `설계 결정` marker added to `<SRS-F025>`. Affected:
   `<SRS-F004>`, `<SRS-N008>`, `<SRS-F025>`.
+- `00.05` (2026-10-10): user decision DISC-007 Q02 "Q2 기능을 문서에 명시" (workspace
+  `4.docs/notes/사람할일/대기중/DISC-007-sad-followup-decisions.md`) — existing code features
+  documented from `src/app`: resident watching replaces the one-shot run (`<SRS-F009>`,
+  `<SRS-F044>`), project document-number matching (`<SRS-F018>`), dashboard (`<SRS-F045>`) and
+  tray (`<SRS-F046>`); `idma run`/`idma ui`/`--dry-run` removed. Changed: `<SRS-F001>`,
+  `<SRS-F002>`, `<SRS-F004>`, `<SRS-F005>`, `<SRS-F006>`, `<SRS-F007>`, `<SRS-F008>`,
+  `<SRS-F011>`, `<SRS-F031>`, `<SRS-F033>`, `<SRS-F034>`, `<SRS-F035>`, `<SRS-F040>`,
+  `<SRS-F042>`, `<SRS-F043>`, `<SRS-N007>`, §1, §2, §3, §5, §8.1, §8.2, §8.2.1, §8.5, §8.7,
+  §9, appendices A–C. User decision Q07 "Q7 인정" accepts the `<SRS-N005>` exception; its
+  text is unchanged and `<PRD-N005>` now states it.
