@@ -1,5 +1,5 @@
 ---
-rev: "00.07"
+rev: "00.08"
 rev_date: "2026-10-10"
 ---
 
@@ -11,7 +11,7 @@ SRS 요구를 현행 `src/app` 패키지 구조 위의 컴포넌트·외부 경�
 
 This SAD is the final design document for IDMA. It describes the architecture structure (views `<SAD-W001>`, `<SAD-W002>`) and the hard-to-reverse decisions `<SAD-R001>`, `<SAD-R003>`, `<SAD-R004>`, `<SAD-R005>`. Implementation below this level is developer judgment within this SAD unless the user explicitly requests otherwise. `docs/3.Design/SDD.md` is not gate-checked; its planned package names (`knowledge/`, `config/`, `scanner.py`, ...) do not exist in the code and are not used here.
 
-- 상태: 초안 (`00.07`), 사용자 합의 근거 없음.
+- 상태: 초안 (`00.08`), 사용자 합의 근거 없음.
 - 범위: the `src/app` Python package — one process per user launch on a local Windows PC, in GUI mode (settings, watch start/stop, dashboard, tray) or `--nogui` mode, that watches `source_root` while running; the files it reads and writes (`ledger.config.yaml`, `app.config.yaml`, `문서목록.json`, the optional project document list xlsx, `source_root`, Phase folders, `project_root`, ledger workbook, `logs/`); and the AI classifier contract boundary.
 
 Inputs: [PRD](../1.Concept/PRD.md) revision `00.03`, [SRS](../2.Requirement/SRS.md) revision `00.08`, and the code under `src/app` as of this revision.
@@ -192,7 +192,7 @@ flowchart TB
 
 ```
 [SAD-C001] 진입·세션 제어
-구현요건: `<SRS-F004>`, `<SRS-F008>`, `<SRS-F025>`, `<SRS-F044>`, `<SRS-N008>`
+구현요건: `<SRS-F004>`, `<SRS-F008>`, `<SRS-F009>`, `<SRS-F025>`, `<SRS-F044>`, `<SRS-N008>`
 Process entry point and watch-session controller. Parses `[--nogui] [--ledger-config <path>] [--app-config <path>]`, wires core and adapter components, runs the startup checks, opens the GUI or starts a session at once, and maps outcomes to exit codes.
 - 책임: CLI parsing (`<SAD-I001>`); dependency assembly; enforcing the startup and session start order above; exit code 1 when `<SAD-C003>` reports a startup failure, before any window or session; when `<SAD-C003>` reports missing ledger headers at a session start, exit code 1 in `--nogui` mode and in GUI mode the cause message with the state staying `Stopped`; starting and stopping sessions on the GUI buttons (`<SAD-C011>`) or at `--nogui` start and Ctrl+C; exit code 2 when `<SAD-C009>` reports the workbook inaccessible at a `--nogui` session start (GUI: message, stays `Stopped`); exit code 3 when a `--nogui` session ended with at least one `Error` file; printing the `--nogui` summary on stop; handing stable files from `<SAD-C004>` to `<SAD-C005>` strictly one at a time; on stop, processing every stable file already queued before ending the session (no loss); stopping the session before exit on window close or tray `프로그램 종료`; every cause message to stderr (stderr only when `project_root` cannot be determined)
 - 비책임: file classification (`<SAD-C006>`), per-file orchestration (`<SAD-C005>`), validation rules (`<SAD-C003>`), event detection and stabilization (`<SAD-C004>`)
@@ -438,15 +438,15 @@ The table records deviations of `src/app` from this SAD observed in the design r
 
 | SAD 항목 | 현행 코드 | SRS 대비 차이 |
 |---|---|---|
-| `<SAD-C001>` | `main.py` | `--knowledge` option overrides the Knowledge path (SRS: `project_root`-based `문서목록.json`) and its default name is `문서 목록.json` (with a space); no exit codes 2/3 (an unhandled exception ends with Python's default code 1); no session-start lock check, backup or header check; `--nogui` stop prints no summary; stable files are not serialized (see `<SAD-C004>`) |
+| `<SAD-C001>` | `main.py` | `--knowledge` option overrides the Knowledge path (SRS: `project_root`-based `문서목록.json`) and its default name is `문서 목록.json` (with a space); the session-start header check compares the configured ledger columns, not the 8 columns of SRS §8.4 (see `<SAD-C009>`) |
 | `<SAD-C002>` | `config_loader.py`, `config_schema.py` | Knowledge read as nested `phases[].artifacts[]`, not SRS §8.3 `artifacts[]`; missing keys get defaults (e.g. `ai.confidence_threshold` 0.8) instead of blocking; a relative `project_root` resolves against the CWD, not the config file directory; `source_root` is used as given without `project_root` resolution; `workbook.sheet` is ignored and the sheet name comes from `ledgers.submission.sheet_name` (default `제출물 관리대장`); save writes a fixed key set by direct overwrite; a missing or unparseable `app.config.yaml` raises an unhandled exception (traceback, no cause message in the log) instead of the `<SRS-F004>` item 6 block |
 | `<SAD-C003>` | `core/validation.py` | `full_name_min_ratio` accepts 0.0; requires `source_root` to be absolute; no config key completeness, abbr uniqueness, access-right or ledger header check; requires Phase folders to exist (SRS creates them) |
-| `<SAD-C004>` | `adapters/file_watcher.py` | no exclusion of names starting with `.`/`~$`, 0-byte files or symlinks; in watchdog mode each event starts its own thread, so several files can be processed concurrently (`<SRS-F008>` requires one at a time); `watch.use_fs_events` in `app.config.yaml` is not read (watchdog is used whenever importable) |
+| `<SAD-C004>` | `adapters/file_watcher.py` | no exclusion of names starting with `.`/`~$`, 0-byte files or symlinks; in watchdog mode each event starts its own thread, so stable files are emitted in stabilization-completion order, not detection order (`<SRS-F008>` "detection order"; processing itself is serialized by `<SAD-C001>`); `watch.use_fs_events` in `app.config.yaml` is not read (watchdog is used whenever importable) |
 | `<SAD-C005>` | `core/usecases.py` | `fallback.enabled=false` raises and yields `Error` instead of `Ready`; Fallback rows store `phase`/`artifact_abbr` = `Fallback`; `Error` rows are not appended to the ledger |
 | `<SAD-C006>` | `core/rule_engine.py` | tokenizer splits on every non-ASCII-alphanumeric character instead of the `<SRS-F010>` delimiter set; 2+ abbr matches continue to full_name matching instead of going to AI; condition 3 of `<SRS-F014>` (Rule-FULL below AI threshold) not applied; adoption conditions 2–3 of `<SRS-F016>` not checked; no `match_evidence` (only a `reason` string) |
 | `<SAD-C007>` | `core/entities.py`, `ai_client.py` | contract is `classify(filename, knowledge)`, not SRS §8.6 `classify(filename, artifacts)`; stub only; 30 s timeout not enforced; an AI exception is not caught and ends the file as `Error` instead of Fallback |
 | `<SAD-C008>` | `adapters/file_ops.py` | copies (`shutil.copy2`), original stays in `source_root`; no suffix upper bound |
-| `<SAD-C009>` | `adapters/excel_repo.py` | no backup; lock handled by 3 retries then exception, no exit 2; creates workbook, sheet and missing headers (changes structure); columns differ from SRS §8.4 (`제출물명`, `제출물 형태`, `접수일` + `processed_at`, no `original_filename`); opens and saves the workbook for every row; no session-start header check (missing headers are added instead) |
+| `<SAD-C009>` | `adapters/excel_repo.py` | row append creates the workbook, sheet and missing headers (changes structure); a locked workbook during row append is handled by 3 retries then an exception; columns differ from SRS §8.4 (`제출물명`, `제출물 형태`, `접수일` + `processed_at`, no `original_filename`), so the session-start header check (implemented) validates the configured columns instead of the 8 SRS columns; opens and saves the workbook for every row |
 | `<SAD-C010>` | `adapters/logger.py` | file name `submission_automation_<YYYYMMDD>.jsonl`; event records without `run_id`, `type` or `match_evidence`; write failure is not caught |
 | `<SAD-C011>` | `ui/settings_window.py` | saves by direct overwrite; no `<SRS-F042>` validation before save; no folder picker; no add/delete of `roots.phase_folders` rows; `workbook_path` is editable (SRS §8.7: not editable); the `실행` tab shows `scan_interval_seconds`/`file_stable_seconds` fields whose values are neither saved nor applied to the running watcher |
 | none | `core/phase_resolver.py`, `core/logic.py`, `utils/helpers.py`, `adapters/adapter_example.py`, `models/model_example.py` | unused or template sample code; no SRS counterpart |
@@ -630,7 +630,7 @@ SRS 요구 47건과 이해관계자·관심사가 SAD 항목에 모두 연결됨
 | `<SRS-F006>` | `<SAD-C002>`, `<SAD-I002>`, `<SAD-Q002>`, `<SAD-R001>` |
 | `<SRS-F007>` | `<SAD-C004>`, `<SAD-I004>` |
 | `<SRS-F008>` | `<SAD-C001>`, `<SAD-C004>`, `<SAD-C005>`, `<SAD-R005>` |
-| `<SRS-F009>` | `<SAD-C004>`, `<SAD-I002>`, `<SAD-R005>` |
+| `<SRS-F009>` | `<SAD-C001>`, `<SAD-C004>`, `<SAD-I002>`, `<SAD-R005>` |
 | `<SRS-F010>` | `<SAD-C006>` |
 | `<SRS-F011>` | `<SAD-C006>` |
 | `<SRS-F012>` | `<SAD-C006>` |
@@ -708,3 +708,4 @@ Draft minor revisions are not table rows: the revision contract (`.claude/skills
 - `00.05` (2026-10-10): verification findings D-13–D-15 on SRS `00.06` — duplicate suppression once per program run (`<SAD-C004>`), `app.config.yaml` load failure blocks startup (`<SAD-I001>`, `<SAD-I002>`, code-gap row `<SAD-C002>`), header check per mode at session start (`<SAD-I001>`, `<SAD-I005>`, code-gap row `<SAD-C009>`). Affected: `<SRS-F004>`, `<SRS-F009>`, `<SRS-F033>`.
 - `00.06` (2026-10-10): verification findings D-15r, D-17 on SRS `00.07` — `<SAD-C001>` responsibilities now assign the session-start missing-header outcome (`--nogui` exit code 1, GUI message and `Stopped`); `<SAD-I001>` and `<SAD-Q008>` limit the stderr-only exception to `ledger.config.yaml` and place a missing `app.config.yaml` under stderr and log. Affected: `<SRS-F004>`, `<SRS-F033>`, `<SRS-N008>`.
 - `00.07` (2026-10-10): user decision on build assumption A3 on SRS `00.08` — `<SAD-C001>` and the session-stop sentence state that stable files already queued are all processed before a session ends; only candidates waiting for stabilization are dropped (`<SAD-C004>` unchanged). Affected: `<SRS-F009>`.
+- `00.08` (2026-10-10): consistency fixes after independent V&V of `00.07`, no SRS change (SRS stays `00.08`) — `<SAD-C001>` lists `<SRS-F009>` in its requirement line and the `<SRS-F009>` trace row adds `<SAD-C001>`; the code-deviation rows for `<SAD-C001>`, `<SAD-C004>` and `<SAD-C009>` drop the exit codes 2/3, session-start lock check, backup, `--nogui` summary and serialization gaps now implemented, and keep the remaining gaps (header check uses configured columns, stabilization-completion order). Affected: `<SRS-F009>`.
