@@ -1,5 +1,5 @@
 ---
-rev: "00.06"
+rev: "00.07"
 rev_date: 2026-10-10
 ---
 
@@ -214,7 +214,7 @@ resolve한다. 현재 작업 디렉토리(CWD)를 기준으로 경로를 해석�
     있으며, 지정된 경우 `path`의 xlsx 파일이 존재.
 6개 중 1개라도 실패하면 GUI 창을 열지 않고 감시를 시작하지 않으며, 어떤 파일도
 이동하지 않고 관리대장도 갱신하지 않은 채 종료 코드 1로 실행을 차단하며, 실패한 검증 항목 번호와 원인 메시지를 stderr와
-로그에 기록한다. 단, 설정 파일을 찾지 못하거나 항목 (1)이 실패해(파싱 실패 또는
+로그에 기록한다. 단, `ledger.config.yaml`을 찾지 못하거나 항목 (1)이 실패해(파싱 실패 또는
 `project_root` 키 누락 등) `project_root`를 확정할 수 없는 경우에는 로그
 위치(<SRS-F036>)를 알 수 없으므로 원인 메시지를 stderr에만 기록한다.
 
@@ -632,7 +632,7 @@ Phase 폴더, `project_root` 직속, `source_root`(Fallback 비활성 또는 `Er
 상위요건: 설계 결정 (<SRS-F004>, <SRS-F025> 오류 경로 대응)
 0이 아닌 종료 코드로 끝나는 모든 실행과, `status`가 `Error`인 모든 파일은
 원인 메시지를 stderr와 로그에 남긴다. 단, <SRS-F004>에 따라 `project_root`를
-확정할 수 없는 실행(설정 파일 없음, 파싱 실패, `project_root` 키 누락 등)은 원인
+확정할 수 없는 실행(`ledger.config.yaml` 없음, 파싱 실패, `project_root` 키 누락 등)은 원인
 메시지를 stderr에만 남긴다.
 스택 트레이스만 출력하고 원인 메시지 없이
 끝나는 실패 경로는 존재하지 않는다.
@@ -695,6 +695,7 @@ duplicate:
   confidence 등급(0.8)은 이 임계를 넘고 하위 등급(0.6)은 넘지 못하므로,
   이 기본값에서 `ratio` 0.7 미만의 약한 Rule 판정은 AI 재확인을 거친다.
 - 키가 누락되거나 값이 위 제약을 벗어나면 <SRS-F004>가 실행을 차단한다.
+- 위 8개 필수 항목 외의 키는 무시하지 않고 그대로 보존해 저장한다(<SRS-F043>).
 
 ### 8.2.1 감시 설정 스키마 (`app.config.yaml`)
 
@@ -706,8 +707,8 @@ watch:
 
 - 위 2개 키만 시스템 동작에 쓰며, 이 파일의 다른 키는 무시한다(<SRS-F009>).
 - 파일이 없거나 YAML 파싱에 실패하거나 값이 1 미만이면 <SRS-F004> 항목 (6)이
-  실행을 차단한다(종료 코드 1, 원인은 stderr와 로그).
-- 위 8개 필수 항목 외의 키는 무시하지 않고 그대로 보존해 저장한다(<SRS-F043>).
+  실행을 차단한다(종료 코드 1, 원인은 stderr와 로그). 이 경우 `project_root`는 이미 확정된
+  상태이므로 stderr 전용 예외(<SRS-F004>, <SRS-N008>)에 해당하지 않는다.
 
 ### 8.3 Knowledge 스키마 (`문서목록.json`)
 
@@ -909,7 +910,7 @@ classify(filename: str, artifacts: list[Artifact]) -> AIResult | None
 | 성능 목표 | 파일 1건당 1초, 100건 60초(AI 제외) | PRD에 성능 근거 없음. 로컬 디스크 파일 이동과 워크북 행 추가의 실측 가능한 상한으로 설정(<SRS-N007>) |
 | `--dry-run` | 삭제 | 2026-10-10 사용자 결정 Q02로 1회 실행 명령이 상주 감시로 대체됐고 현행 코드에 없다. 2026-10-09의 "`--dry-run` 시 백업 안 함" 명확화도 함께 소멸(8.1절) |
 | 관리대장 행 기록 실패 처리 | 이동한 파일을 `source_root`로 되돌리고 `Error`, 결과는 로그에만 기록 | 2026-10-09 명확화. 이동 후 행 기록 순서(<SRS-F024>)와 `Error` 파일의 `source_root` 보존(<SRS-F025>)을 함께 만족시키고, 행 수 대조 예외를 <SRS-N005>에 명시 |
-| `project_root` 확정 불가 시 오류 보고 위치 | stderr 전용 | 2026-10-09 명확화, 2026-10-10 범위 정렬(설정 파일 없음·파싱 실패·키 누락). `project_root`를 확정할 수 없으면 로그 위치(<SRS-F036>)가 정해지지 않는다(<SRS-F004>, <SRS-N008>) |
+| `project_root` 확정 불가 시 오류 보고 위치 | stderr 전용 | 2026-10-09 명확화, 2026-10-10 범위 정렬(`ledger.config.yaml` 없음·파싱 실패·키 누락; `app.config.yaml` 부재는 `project_root`가 확정된 상태이므로 stderr와 로그). `project_root`를 확정할 수 없으면 로그 위치(<SRS-F036>)가 정해지지 않는다(<SRS-F004>, <SRS-N008>) |
 | 사전 검증 (4) 경로 대상 | `project_root`·`roots.source_root`는 디렉토리 자체, `workbook.path`는 상위 디렉토리 | 2026-10-09 명확화. <SRS-F042>의 존재 검사 대상과 일치 |
 | UI의 `workbook.path` | 편집 항목 아님 | 2026-10-09 명확화. <SRS-F040>·<PRD-F015>의 7개 항목에 맞춰 8.7절 화면 구성을 정렬 |
 | 처리 순서 | 감지 순서, 1건씩 직렬 | 2026-10-10 사용자 결정 Q02(상주 감시)로 1회 수집 집합이 없어져 파일명 오름차순을 대체. 직렬 처리는 기존 순차 처리 요구 유지(<SRS-F008>) |
@@ -965,3 +966,8 @@ approval.
   missing or unparseable `app.config.yaml` blocks startup (`<SRS-F004>` item 6, §8.2.1); the ledger
   header check moves from program start to session start with per-mode behavior (`<SRS-F033>`,
   §8.1, §8.4). No user-intent change.
+- `00.07` (2026-10-10): verification findings D-16, D-17 on `00.06`. The `ledger.config.yaml` key
+  preservation rule (`<SRS-F043>`) moves from §8.2.1 to the end of §8.2 (§8.2.1 contradicted "other
+  keys ignored"); the stderr-only exception wording in `<SRS-F004>`, `<SRS-N008>` and appendix B
+  names `ledger.config.yaml` instead of "설정 파일", and §8.2.1 states that a missing
+  `app.config.yaml` is not an exception. No requirement meaning change.

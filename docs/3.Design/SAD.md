@@ -1,5 +1,5 @@
 ---
-rev: "00.05"
+rev: "00.06"
 rev_date: "2026-10-10"
 ---
 
@@ -11,10 +11,10 @@ SRS 요구를 현행 `src/app` 패키지 구조 위의 컴포넌트·외부 경�
 
 This SAD is the final design document for IDMA. It describes the architecture structure (views `<SAD-W001>`, `<SAD-W002>`) and the hard-to-reverse decisions `<SAD-R001>`, `<SAD-R003>`, `<SAD-R004>`, `<SAD-R005>`. Implementation below this level is developer judgment within this SAD unless the user explicitly requests otherwise. `docs/3.Design/SDD.md` is not gate-checked; its planned package names (`knowledge/`, `config/`, `scanner.py`, ...) do not exist in the code and are not used here.
 
-- 상태: 초안 (`00.05`), 사용자 합의 근거 없음.
+- 상태: 초안 (`00.06`), 사용자 합의 근거 없음.
 - 범위: the `src/app` Python package — one process per user launch on a local Windows PC, in GUI mode (settings, watch start/stop, dashboard, tray) or `--nogui` mode, that watches `source_root` while running; the files it reads and writes (`ledger.config.yaml`, `app.config.yaml`, `문서목록.json`, the optional project document list xlsx, `source_root`, Phase folders, `project_root`, ledger workbook, `logs/`); and the AI classifier contract boundary.
 
-Inputs: [PRD](../1.Concept/PRD.md) revision `00.03`, [SRS](../2.Requirement/SRS.md) revision `00.06`, and the code under `src/app` as of this revision.
+Inputs: [PRD](../1.Concept/PRD.md) revision `00.03`, [SRS](../2.Requirement/SRS.md) revision `00.07`, and the code under `src/app` as of this revision.
 
 Component placement follows the existing layering of `src/app`: `core/` holds domain types, protocols and use-case logic and imports no adapter; `adapters/` holds file, workbook, log, watcher and AI implementations; `models/` holds the runtime config model and default config files; `ui/` holds the Tkinter window; `main.py` assembles everything. The code was produced before the current SRS (see `docs/notes/LLM작업/완료/Codex 1차 자동빌드 결과물.md`) and deviates from it in several places. Those deviations are listed in `현행 코드 대응` under `<SAD-W001>` as implementation-stage work; this SAD follows the SRS wherever the two differ.
 
@@ -194,7 +194,7 @@ flowchart TB
 [SAD-C001] 진입·세션 제어
 구현요건: `<SRS-F004>`, `<SRS-F008>`, `<SRS-F025>`, `<SRS-F044>`, `<SRS-N008>`
 Process entry point and watch-session controller. Parses `[--nogui] [--ledger-config <path>] [--app-config <path>]`, wires core and adapter components, runs the startup checks, opens the GUI or starts a session at once, and maps outcomes to exit codes.
-- 책임: CLI parsing (`<SAD-I001>`); dependency assembly; enforcing the startup and session start order above; exit code 1 when `<SAD-C003>` reports a startup failure, before any window or session; starting and stopping sessions on the GUI buttons (`<SAD-C011>`) or at `--nogui` start and Ctrl+C; exit code 2 when `<SAD-C009>` reports the workbook inaccessible at a `--nogui` session start (GUI: message, stays `Stopped`); exit code 3 when a `--nogui` session ended with at least one `Error` file; printing the `--nogui` summary on stop; handing stable files from `<SAD-C004>` to `<SAD-C005>` strictly one at a time; stopping the session before exit on window close or tray `프로그램 종료`; every cause message to stderr (stderr only when `project_root` cannot be determined)
+- 책임: CLI parsing (`<SAD-I001>`); dependency assembly; enforcing the startup and session start order above; exit code 1 when `<SAD-C003>` reports a startup failure, before any window or session; when `<SAD-C003>` reports missing ledger headers at a session start, exit code 1 in `--nogui` mode and in GUI mode the cause message with the state staying `Stopped`; starting and stopping sessions on the GUI buttons (`<SAD-C011>`) or at `--nogui` start and Ctrl+C; exit code 2 when `<SAD-C009>` reports the workbook inaccessible at a `--nogui` session start (GUI: message, stays `Stopped`); exit code 3 when a `--nogui` session ended with at least one `Error` file; printing the `--nogui` summary on stop; handing stable files from `<SAD-C004>` to `<SAD-C005>` strictly one at a time; stopping the session before exit on window close or tray `프로그램 종료`; every cause message to stderr (stderr only when `project_root` cannot be determined)
 - 비책임: file classification (`<SAD-C006>`), per-file orchestration (`<SAD-C005>`), validation rules (`<SAD-C003>`), event detection and stabilization (`<SAD-C004>`)
 - 현행 모듈: `src/app/main.py` (`main`, `_build_runtime`, `AppController`)
 ```
@@ -298,7 +298,7 @@ Optional adapter that resolves a file to an artifact through the project documen
 `<program> [--nogui] [--ledger-config <path>] [--app-config <path>]` (SRS §8.1); `<program>` is the packaged executable or `python -m app.main`
 - 입력: no option = GUI mode; `--nogui` = start a session at once and run until Ctrl+C; config paths default to the same-named files in the program's bundled `models` folder; a found config file is never a path base, `project_root` is
 - 출력: `--nogui` stop prints a summary (target count, count per method, `Error` count) to stdout; GUI mode reports through the window
-- 실패 시 동작: exit 0 = normal stop; 1 = startup validation or config failure (including a missing or unparseable `app.config.yaml`), before any window, session or move, or missing ledger headers at a `--nogui` session start; 2 = ledger workbook locked or not accessible at a `--nogui` session start, before any move; 3 = a `--nogui` session ended with at least one `Error` file. Every non-zero exit writes a cause message to stderr and the log, except when `project_root` cannot be determined (config file missing, unparseable or `project_root` key missing): stderr only (`<SRS-F004>`, `<SRS-N008>`)
+- 실패 시 동작: exit 0 = normal stop; 1 = startup validation or config failure (including a missing or unparseable `app.config.yaml`), before any window, session or move, or missing ledger headers at a `--nogui` session start; 2 = ledger workbook locked or not accessible at a `--nogui` session start, before any move; 3 = a `--nogui` session ended with at least one `Error` file. Every non-zero exit writes a cause message to stderr and the log, except when `project_root` cannot be determined (`ledger.config.yaml` missing, unparseable or `project_root` key missing): stderr only (`<SRS-F004>`, `<SRS-N008>`)
 ```
 
 ```
@@ -428,7 +428,7 @@ Ledger row count = log file-record count = target count, each with method and ev
 구현요건: `<SRS-N008>`, `<SRS-F025>`
 Every non-zero exit and every `Error` file has a cause message in stderr and the log; a run where `project_root` cannot be determined reports to stderr only.
 - 구조적 수단: `<SAD-C001>` converts all run-level exceptions into exit codes with messages; `<SAD-C005>` records exception type and message in `error_message` and the file log record
-- 확인 방법: `--nogui` tests per exit code 1/2/3 checking stderr and log contain a cause message, not only a traceback; for a missing config file, an unparseable config and a missing `project_root` key, checking stderr only
+- 확인 방법: `--nogui` tests per exit code 1/2/3 checking stderr and log contain a cause message, not only a traceback; for a missing `ledger.config.yaml`, an unparseable `ledger.config.yaml` and a missing `project_root` key, checking stderr only; for a missing or unparseable `app.config.yaml` (`project_root` already known), checking that stderr and the log both contain the cause message
 ```
 
 #### 현행 코드 대응
@@ -575,7 +575,7 @@ In `<SAD-W002>` a successful save writes `ledger.config.yaml` at once, but `<SAD
 
 The structure keeps the existing `core/` (domain logic and protocols, no adapter imports) versus `adapters/` (file, workbook, log, AI implementations) split of `src/app`. That split lets the Rule Engine stay deterministic and lets the AI implementation, workbook library or log format change without touching `core/`. Component internals, library choices and test layout are developer judgment.
 
-All four decisions restate constraints already fixed by SRS revision `00.06` (§2, §5.2, §5.3, §8.1–§8.6, §9); none adds a requirement. The former one-shot run decision (SAD-R002, ADR-002) was withdrawn in this SAD revision `00.04` after user decision DISC-007 Q02; ADR-002 is marked superseded by ADR-005.
+All four decisions restate constraints already fixed by SRS revision `00.07` (§2, §5.2, §5.3, §8.1–§8.6, §9); none adds a requirement. The former one-shot run decision (SAD-R002, ADR-002) was withdrawn in this SAD revision `00.04` after user decision DISC-007 Q02; ADR-002 is marked superseded by ADR-005.
 
 ```
 [SAD-R001] Knowledge와 Runtime Config를 두 파일로 분리하고 Knowledge는 읽기 전용
@@ -706,3 +706,4 @@ Draft minor revisions are not table rows: the revision contract (`.claude/skills
 - `00.03` (2026-10-10): re-review fixes D-08 residual, D-09, D-10, D-11 on SRS `00.04` — stderr-only scope, workbook reload after a failed save, `<SAD-I005>` trace, revision notes. Affected: `<SRS-F004>`, `<SRS-F025>`, `<SRS-N005>`, `<SRS-N008>`.
 - `00.04` (2026-10-10): user decisions DISC-007 Q02 "Q2 기능을 문서에 명시" and Q07 "Q7 인정" on PRD `00.03` and SRS `00.05` — resident watching (`<SAD-C004>`, `<SAD-R005>`, ADR-005; SAD-R002 withdrawn, ADR-002 superseded), document-number classifier (`<SAD-C012>`, `<SAD-I009>`), dashboard and tray (`<SAD-C013>`, `<SAD-I010>`), `<SAD-K008>`, `<SAD-X002>`, `--dry-run` removed, code-deviation table updated. Affected: `<SRS-F004>`, `<SRS-F007>`, `<SRS-F008>`, `<SRS-F009>`, `<SRS-F018>`, `<SRS-F033>`, `<SRS-F040>`, `<SRS-F044>`, `<SRS-F045>`, `<SRS-F046>`, `<SRS-N005>`, `<SRS-N007>`.
 - `00.05` (2026-10-10): verification findings D-13–D-15 on SRS `00.06` — duplicate suppression once per program run (`<SAD-C004>`), `app.config.yaml` load failure blocks startup (`<SAD-I001>`, `<SAD-I002>`, code-gap row `<SAD-C002>`), header check per mode at session start (`<SAD-I001>`, `<SAD-I005>`, code-gap row `<SAD-C009>`). Affected: `<SRS-F004>`, `<SRS-F009>`, `<SRS-F033>`.
+- `00.06` (2026-10-10): verification findings D-15r, D-17 on SRS `00.07` — `<SAD-C001>` responsibilities now assign the session-start missing-header outcome (`--nogui` exit code 1, GUI message and `Stopped`); `<SAD-I001>` and `<SAD-Q008>` limit the stderr-only exception to `ledger.config.yaml` and place a missing `app.config.yaml` under stderr and log. Affected: `<SRS-F004>`, `<SRS-F033>`, `<SRS-N008>`.
