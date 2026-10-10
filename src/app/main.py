@@ -122,6 +122,8 @@ class AppController:
         self._guard = session_guard
         self._running = False
         self._accepting = False
+        # "수락 여부 확인 + 대기열 적재"와 "수락 종료 + _STOP 적재"를 원자적으로 묶는다(_STOP 뒤 적재·유실 방지).
+        self._gate = threading.Lock()
         self._queue: queue.Queue = queue.Queue()
         self._worker: threading.Thread | None = None
         self._run_id = ""
@@ -153,11 +155,13 @@ class AppController:
         self._method_counts = Counter()
         self._queue = queue.Queue()
         # 감시기 시작이 실패하면 작업자를 만들지 않는다(콜백은 대기열에 넣기만 하므로 순서가 안전하다).
-        self._accepting = True
+        with self._gate:
+            self._accepting = True
         try:
             self._watcher.start(self._on_file)
         except Exception:
-            self._accepting = False
+            with self._gate:
+                self._accepting = False
             raise
         self._worker = threading.Thread(target=self._work, name="idma-serial-worker", daemon=True)
         self._worker.start()
@@ -169,9 +173,12 @@ class AppController:
         """감시기를 중지하고 대기열을 비운 뒤 상태 이벤트를 남긴다."""
         if not self._running:
             return
-        self._accepting = False  # 중지 뒤 늦게 도착한 콜백은 버린다(대기열 유실·세션 혼입 방지)
+        # 1) 감시기를 먼저 멈춰 진행 중인 emit이 끝나게 한다(안정화를 마친 파일은 콜백으로 대기열에 들어오거나, 서명 미기록으로 남는다).
         self._watcher.stop()
-        self._queue.put(_STOP)
+        # 2) 그 뒤에 수락을 닫고 _STOP을 넣는다. 이후 늦게 도착한 콜백은 버린다(대기열 유실·세션 혼입 방지).
+        with self._gate:
+            self._accepting = False
+            self._queue.put(_STOP)
         if self._worker is not None:
             self._worker.join()
             self._worker = None
@@ -181,8 +188,9 @@ class AppController:
     # 감시기 스레드에서는 대기열에 넣기만 한다. 실제 처리는 작업자 1개가 감지 순서대로 수행한다.
     def _on_file(self, path: Path) -> None:
         """안정화된 파일을 대기열에 넣는다. 세션이 중지 중이면 버린다."""
-        if self._accepting:
-            self._queue.put(path)
+        with self._gate:
+            if self._accepting:
+                self._queue.put(path)
 
     def _work(self) -> None:
         """대기열의 파일을 1건씩 처리한다. 한 파일의 예외는 다음 파일 처리를 막지 않는다."""

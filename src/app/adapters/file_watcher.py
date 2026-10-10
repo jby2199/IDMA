@@ -28,6 +28,8 @@ class StableFileWatcher:
         self._stop_event = threading.Event()
         self._callback: Callable[[Path], None] | None = None
         self._known_signatures: set[tuple[str, int, int]] = set()
+        # "중지 아님 확인 + 서명 기록 + 콜백 전달"을 stop()과 원자적으로 묶는다.
+        self._emit_lock = threading.Lock()
         self._debounce: dict[str, float] = {}
         self._thread: threading.Thread | None = None
 
@@ -44,6 +46,9 @@ class StableFileWatcher:
     def stop(self) -> None:
         """감시를 중지하고 백그라운드 자원을 정리한다."""
         self._stop_event.set()
+        # 진행 중인 emit(서명 기록~콜백 전달)이 끝나길 기다린다. 이후 emit은 중지 신호를 보고 서명 기록 없이 버려진다.
+        with self._emit_lock:
+            pass
         if self._observer is not None:
             self._observer.stop()
             self._observer.join(timeout=5)
@@ -110,17 +115,18 @@ class StableFileWatcher:
             return
         if not self._wait_until_stable(file_path):
             return
-        # 안정화가 끝난 직후 중지됐다면 서명을 기록하기 전에 버린다(재시작 때 다시 후보가 될 수 있게).
-        if self._stop_event.is_set():
-            return
+        with self._emit_lock:
+            # 안정화가 끝난 직후 중지됐다면 서명을 기록하기 전에 버린다(재시작 때 다시 후보가 될 수 있게).
+            if self._stop_event.is_set():
+                return
 
-        stat = file_path.stat()
-        signature = (str(file_path.resolve()), stat.st_size, stat.st_mtime_ns)
-        if signature in self._known_signatures:
-            return
+            stat = file_path.stat()
+            signature = (str(file_path.resolve()), stat.st_size, stat.st_mtime_ns)
+            if signature in self._known_signatures:
+                return
 
-        self._known_signatures.add(signature)
-        self._callback(file_path)
+            self._known_signatures.add(signature)
+            self._callback(file_path)
 
     # 일정 시간 동안 파일 크기/mtime이 변하지 않으면 안정화로 본다.
     def _wait_until_stable(self, file_path: Path) -> bool:

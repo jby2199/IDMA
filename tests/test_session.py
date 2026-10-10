@@ -325,12 +325,41 @@ def test_stop_processes_every_file_already_queued() -> None:
     stopper.start()
     time.sleep(0.05)  # stop이 대기열 소진을 기다리는 상태가 되게 한다
     assert usecase.order == []  # 중지 요청 시점에 아무것도 끝나지 않았다
+    assert watcher.stopped is True  # 작업자를 풀어주기 전에 감시기가 이미 중지됐다
+    assert stopper.is_alive()  # stop은 대기열 소진을 기다리는 중이다
     release.set()
     stopper.join(5)
 
     assert not stopper.is_alive()
     assert watcher.stopped is True
     assert usecase.order == names  # 대기열 전부 감지 순서대로 처리, 유실 없음
+
+
+def test_callback_delivered_while_watcher_stops_is_processed() -> None:
+    """감시기 중지 중(진행 중 emit이 끝나는 동안) 전달된 콜백은 버려지지 않고 처리된다."""
+    watcher = FakeWatcher()
+    usecase = FakeUsecase()
+    controller = AppController(usecase, watcher, MemoryLogger())
+    controller.start()
+
+    def stop_with_inflight_emit():
+        watcher.stopped = True
+        watcher.callback(Path("inflight.pdf"))  # watcher.stop()이 끝나기 전에 끝나는 emit
+
+    watcher.stop = stop_with_inflight_emit
+    controller.stop()
+
+    assert usecase.order == ["inflight.pdf"]
+
+
+def test_nothing_enqueued_after_stop_marker() -> None:
+    """_STOP 이후에는 어떤 경로도 대기열에 들어가지 않는다(수락 종료와 _STOP 적재가 원자적)."""
+    watcher = FakeWatcher()
+    controller = AppController(FakeUsecase(), watcher, MemoryLogger())
+    controller.start()
+    controller.stop()
+    watcher.callback(Path("late.pdf"))
+    assert controller._queue.empty()
 
 
 def test_queue_order_is_fifo() -> None:

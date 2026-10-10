@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import queue
 import threading
 import tkinter as tk
 from datetime import datetime
@@ -52,6 +53,10 @@ class SettingsWindow:
         self._resize_job: str | None = None
         self._tray_icon = None
         self._tray_thread: threading.Thread | None = None
+        # 작업자 스레드는 Tk를 호출하지 않는다. 로그 이벤트는 이 대기열에만 넣고, Tk 스레드가 주기적으로 비운다.
+        self._log_queue: queue.Queue = queue.Queue()
+        self._log_poll_job: str | None = None
+        self._closed = False
 
         notebook = ttk.Notebook(self._root)
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
@@ -69,6 +74,7 @@ class SettingsWindow:
 
         self._root.bind("<Configure>", self._on_root_resize)
         self._root.protocol("WM_DELETE_WINDOW", self._exit_program)
+        self._poll_log_queue()
 
     # ???? ?(?? ??/?? ??/?? ??)? ????.
     def _build_dashboard_tab(self, notebook: ttk.Notebook) -> None:
@@ -238,7 +244,40 @@ class SettingsWindow:
 
     # ????? ?? ???? ?? ??? ??? ????.
     def on_log_event(self, payload: dict) -> None:
-        self._root.after(0, lambda: self._handle_log_event(payload))
+        # 임의 스레드(작업자·감시기)에서 호출된다. Tk를 건드리지 않고 대기열에 넣기만 한다.
+        self._log_queue.put(payload)
+
+    # Tk 스레드에서 대기열의 로그 이벤트를 모두 UI에 반영한다.
+    def _drain_log_queue(self) -> None:
+        while True:
+            try:
+                payload = self._log_queue.get_nowait()
+            except queue.Empty:
+                return
+            try:
+                self._handle_log_event(payload)
+            except Exception:
+                # 한 이벤트의 표시 오류가 이후 이벤트 반영을 막지 않는다.
+                continue
+
+    # 100ms 주기로 대기열을 비운다. 창이 닫히면 더 예약하지 않는다.
+    def _poll_log_queue(self) -> None:
+        self._log_poll_job = None
+        if self._closed:
+            return
+        self._drain_log_queue()
+        self._log_poll_job = self._root.after(100, self._poll_log_queue)
+
+    # 주기 폴링을 멈추고 더 예약하지 않게 한다.
+    def _stop_log_polling(self) -> None:
+        self._closed = True
+        job = self._log_poll_job
+        self._log_poll_job = None
+        if job is not None:
+            try:
+                self._root.after_cancel(job)
+            except Exception:
+                pass
 
     # ???? ?? ??? ???? ??/?? ?? ????.
     def _handle_log_event(self, payload: dict) -> None:
@@ -466,6 +505,7 @@ class SettingsWindow:
     # ?? ???? ????.
     def _stop(self) -> None:
         self._on_stop()
+        self._drain_log_queue()  # 대기열 소진 중 쌓인 이벤트를 즉시 반영한다.
         self._status_var.set("Stopped")
         messagebox.showinfo("상태", "감시 서비스 중지")
 
@@ -547,4 +587,5 @@ class SettingsWindow:
         except Exception:
             pass
         self._stop_tray_icon()
+        self._stop_log_polling()
         self._root.destroy()
