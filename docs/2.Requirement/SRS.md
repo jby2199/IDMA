@@ -1,5 +1,5 @@
 ---
-rev: "00.07"
+rev: "00.08"
 rev_date: 2026-10-10
 ---
 
@@ -259,7 +259,8 @@ abbr confidence 값(1.0)은 분류 알고리즘의 일부로 코드에 정의한
 크기와 수정 시각이 `watch.file_stable_seconds`초 동안 변하지 않은 뒤에만 처리한다.
 같은 (절대경로, 크기, 수정 시각) 조합의 파일은 프로그램 실행 동안 1회만 처리하며,
 감시 세션을 중지했다가 다시 시작해도 이 기록은 유지된다.
-감시가 중지되면 안정화 대기 중인 후보는 처리하지 않는다.
+감시가 중지되면 안정화 대기 중인 후보는 처리하지 않는다. 이미 안정화되어 처리 대기열에
+든 파일은 감시가 중지되어도 모두 처리한 뒤 세션을 끝낸다(유실 없음).
 
 ### 6.3 Rule Engine
 
@@ -971,3 +972,7 @@ approval.
   keys ignored"); the stderr-only exception wording in `<SRS-F004>`, `<SRS-N008>` and appendix B
   names `ledger.config.yaml` instead of "설정 파일", and §8.2.1 states that a missing
   `app.config.yaml` is not an exception. No requirement meaning change.
+- `00.08` (2026-10-10): user decision on build assumption A3 ("추천이 있으면 추천대로 해", option A) -
+  `<SRS-F009>` states that files already stabilized and queued when watching stops are all processed
+  before the session ends; only candidates still waiting for stabilization are dropped. The code
+  already behaved this way (`src/app/main.py` `AppController.stop`/`_work`). Changed: `<SRS-F009>`.

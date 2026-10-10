@@ -299,6 +299,40 @@ def test_files_are_processed_one_at_a_time_in_detection_order() -> None:
     assert sorted(usecase.order) == sorted(names)  # 전부 처리, 유실 없음
 
 
+def test_stop_processes_every_file_already_queued() -> None:
+    """<SRS-F009>: 중지 시 이미 대기열에 든 안정화 완료 파일은 모두 처리한 뒤 끝난다."""
+    watcher = FakeWatcher()
+    first_started = threading.Event()
+    release = threading.Event()
+
+    class GatedUsecase(FakeUsecase):
+        def run(self, path: Path):
+            if path.name == "q0.pdf":
+                first_started.set()
+                assert release.wait(5)  # 첫 파일 처리 중에 나머지를 대기열에 쌓는다
+            return super().run(path)
+
+    usecase = GatedUsecase()
+    controller = AppController(usecase, watcher, MemoryLogger())
+    controller.start()
+    names = [f"q{i}.pdf" for i in range(4)]
+    watcher.callback(Path(names[0]))
+    assert first_started.wait(5)
+    for name in names[1:]:
+        watcher.callback(Path(name))  # q0 처리 중이므로 q1~q3은 대기열에 남아 있다
+
+    stopper = threading.Thread(target=controller.stop)
+    stopper.start()
+    time.sleep(0.05)  # stop이 대기열 소진을 기다리는 상태가 되게 한다
+    assert usecase.order == []  # 중지 요청 시점에 아무것도 끝나지 않았다
+    release.set()
+    stopper.join(5)
+
+    assert not stopper.is_alive()
+    assert watcher.stopped is True
+    assert usecase.order == names  # 대기열 전부 감지 순서대로 처리, 유실 없음
+
+
 def test_queue_order_is_fifo() -> None:
     watcher = FakeWatcher()
     usecase = FakeUsecase(delay=0.01)

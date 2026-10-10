@@ -1,5 +1,5 @@
 ---
-rev: "00.06"
+rev: "00.07"
 rev_date: "2026-10-10"
 ---
 
@@ -11,10 +11,10 @@ SRS 요구를 현행 `src/app` 패키지 구조 위의 컴포넌트·외부 경�
 
 This SAD is the final design document for IDMA. It describes the architecture structure (views `<SAD-W001>`, `<SAD-W002>`) and the hard-to-reverse decisions `<SAD-R001>`, `<SAD-R003>`, `<SAD-R004>`, `<SAD-R005>`. Implementation below this level is developer judgment within this SAD unless the user explicitly requests otherwise. `docs/3.Design/SDD.md` is not gate-checked; its planned package names (`knowledge/`, `config/`, `scanner.py`, ...) do not exist in the code and are not used here.
 
-- 상태: 초안 (`00.06`), 사용자 합의 근거 없음.
+- 상태: 초안 (`00.07`), 사용자 합의 근거 없음.
 - 범위: the `src/app` Python package — one process per user launch on a local Windows PC, in GUI mode (settings, watch start/stop, dashboard, tray) or `--nogui` mode, that watches `source_root` while running; the files it reads and writes (`ledger.config.yaml`, `app.config.yaml`, `문서목록.json`, the optional project document list xlsx, `source_root`, Phase folders, `project_root`, ledger workbook, `logs/`); and the AI classifier contract boundary.
 
-Inputs: [PRD](../1.Concept/PRD.md) revision `00.03`, [SRS](../2.Requirement/SRS.md) revision `00.07`, and the code under `src/app` as of this revision.
+Inputs: [PRD](../1.Concept/PRD.md) revision `00.03`, [SRS](../2.Requirement/SRS.md) revision `00.08`, and the code under `src/app` as of this revision.
 
 Component placement follows the existing layering of `src/app`: `core/` holds domain types, protocols and use-case logic and imports no adapter; `adapters/` holds file, workbook, log, watcher and AI implementations; `models/` holds the runtime config model and default config files; `ui/` holds the Tkinter window; `main.py` assembles everything. The code was produced before the current SRS (see `docs/notes/LLM작업/완료/Codex 1차 자동빌드 결과물.md`) and deviates from it in several places. Those deviations are listed in `현행 코드 대응` under `<SAD-W001>` as implementation-stage work; this SAD follows the SRS wherever the two differ.
 
@@ -151,7 +151,7 @@ flowchart TB
 
 범례: 파랑=컴포넌트, 보라=파일, 회색=사용자. 실선=정보 전달.
 
-Startup order: (1) `<SAD-C002>` loads both config files and Knowledge, and `<SAD-C012>` loads the project document list when `project_doc_info` is set; (2) `<SAD-C003>` checks `<SRS-F004>` items 1–6; any failure exits with code 1 before a window opens or a session starts; (3) GUI mode opens the window in the `Stopped` state, `--nogui` mode starts a session at once. Session start order: (4) `<SAD-C009>` checks the workbook lock (`--nogui`: exit 2; GUI: message, stays `Stopped`); (5) `<SAD-C009>` backs up the workbook; (6) `<SAD-C009>` reads the header row and `<SAD-C003>` checks the 8 header names (missing: session not started; `--nogui` exits 1); (7) `<SAD-C004>` starts watching. No file moves before step 7. Session stop: `<SAD-C004>` stops and drops candidates still waiting for stabilization; `--nogui` prints the summary and exits 0, or 3 when the session had an `Error` file.
+Startup order: (1) `<SAD-C002>` loads both config files and Knowledge, and `<SAD-C012>` loads the project document list when `project_doc_info` is set; (2) `<SAD-C003>` checks `<SRS-F004>` items 1–6; any failure exits with code 1 before a window opens or a session starts; (3) GUI mode opens the window in the `Stopped` state, `--nogui` mode starts a session at once. Session start order: (4) `<SAD-C009>` checks the workbook lock (`--nogui`: exit 2; GUI: message, stays `Stopped`); (5) `<SAD-C009>` backs up the workbook; (6) `<SAD-C009>` reads the header row and `<SAD-C003>` checks the 8 header names (missing: session not started; `--nogui` exits 1); (7) `<SAD-C004>` starts watching. No file moves before step 7. Session stop: `<SAD-C004>` stops and drops candidates still waiting for stabilization, then `<SAD-C001>` finishes every stable file already queued before the session ends; `--nogui` prints the summary and exits 0, or 3 when the session had an `Error` file.
 
 #### FIG-SAD-002 · 파일 1건 처리
 처리 조정 컴포넌트가 감시·분류·배치·기록 컴포넌트를 순서대로 호출하고 각 외부 저장소와 만나는 지점을 보인다.
@@ -194,7 +194,7 @@ flowchart TB
 [SAD-C001] 진입·세션 제어
 구현요건: `<SRS-F004>`, `<SRS-F008>`, `<SRS-F025>`, `<SRS-F044>`, `<SRS-N008>`
 Process entry point and watch-session controller. Parses `[--nogui] [--ledger-config <path>] [--app-config <path>]`, wires core and adapter components, runs the startup checks, opens the GUI or starts a session at once, and maps outcomes to exit codes.
-- 책임: CLI parsing (`<SAD-I001>`); dependency assembly; enforcing the startup and session start order above; exit code 1 when `<SAD-C003>` reports a startup failure, before any window or session; when `<SAD-C003>` reports missing ledger headers at a session start, exit code 1 in `--nogui` mode and in GUI mode the cause message with the state staying `Stopped`; starting and stopping sessions on the GUI buttons (`<SAD-C011>`) or at `--nogui` start and Ctrl+C; exit code 2 when `<SAD-C009>` reports the workbook inaccessible at a `--nogui` session start (GUI: message, stays `Stopped`); exit code 3 when a `--nogui` session ended with at least one `Error` file; printing the `--nogui` summary on stop; handing stable files from `<SAD-C004>` to `<SAD-C005>` strictly one at a time; stopping the session before exit on window close or tray `프로그램 종료`; every cause message to stderr (stderr only when `project_root` cannot be determined)
+- 책임: CLI parsing (`<SAD-I001>`); dependency assembly; enforcing the startup and session start order above; exit code 1 when `<SAD-C003>` reports a startup failure, before any window or session; when `<SAD-C003>` reports missing ledger headers at a session start, exit code 1 in `--nogui` mode and in GUI mode the cause message with the state staying `Stopped`; starting and stopping sessions on the GUI buttons (`<SAD-C011>`) or at `--nogui` start and Ctrl+C; exit code 2 when `<SAD-C009>` reports the workbook inaccessible at a `--nogui` session start (GUI: message, stays `Stopped`); exit code 3 when a `--nogui` session ended with at least one `Error` file; printing the `--nogui` summary on stop; handing stable files from `<SAD-C004>` to `<SAD-C005>` strictly one at a time; on stop, processing every stable file already queued before ending the session (no loss); stopping the session before exit on window close or tray `프로그램 종료`; every cause message to stderr (stderr only when `project_root` cannot be determined)
 - 비책임: file classification (`<SAD-C006>`), per-file orchestration (`<SAD-C005>`), validation rules (`<SAD-C003>`), event detection and stabilization (`<SAD-C004>`)
 - 현행 모듈: `src/app/main.py` (`main`, `_build_runtime`, `AppController`)
 ```
@@ -575,7 +575,7 @@ In `<SAD-W002>` a successful save writes `ledger.config.yaml` at once, but `<SAD
 
 The structure keeps the existing `core/` (domain logic and protocols, no adapter imports) versus `adapters/` (file, workbook, log, AI implementations) split of `src/app`. That split lets the Rule Engine stay deterministic and lets the AI implementation, workbook library or log format change without touching `core/`. Component internals, library choices and test layout are developer judgment.
 
-All four decisions restate constraints already fixed by SRS revision `00.07` (§2, §5.2, §5.3, §8.1–§8.6, §9); none adds a requirement. The former one-shot run decision (SAD-R002, ADR-002) was withdrawn in this SAD revision `00.04` after user decision DISC-007 Q02; ADR-002 is marked superseded by ADR-005.
+All four decisions restate constraints already fixed by SRS revision `00.08` (§2, §5.2, §5.3, §8.1–§8.6, §9); none adds a requirement. The former one-shot run decision (SAD-R002, ADR-002) was withdrawn in this SAD revision `00.04` after user decision DISC-007 Q02; ADR-002 is marked superseded by ADR-005.
 
 ```
 [SAD-R001] Knowledge와 Runtime Config를 두 파일로 분리하고 Knowledge는 읽기 전용
@@ -707,3 +707,4 @@ Draft minor revisions are not table rows: the revision contract (`.claude/skills
 - `00.04` (2026-10-10): user decisions DISC-007 Q02 "Q2 기능을 문서에 명시" and Q07 "Q7 인정" on PRD `00.03` and SRS `00.05` — resident watching (`<SAD-C004>`, `<SAD-R005>`, ADR-005; SAD-R002 withdrawn, ADR-002 superseded), document-number classifier (`<SAD-C012>`, `<SAD-I009>`), dashboard and tray (`<SAD-C013>`, `<SAD-I010>`), `<SAD-K008>`, `<SAD-X002>`, `--dry-run` removed, code-deviation table updated. Affected: `<SRS-F004>`, `<SRS-F007>`, `<SRS-F008>`, `<SRS-F009>`, `<SRS-F018>`, `<SRS-F033>`, `<SRS-F040>`, `<SRS-F044>`, `<SRS-F045>`, `<SRS-F046>`, `<SRS-N005>`, `<SRS-N007>`.
 - `00.05` (2026-10-10): verification findings D-13–D-15 on SRS `00.06` — duplicate suppression once per program run (`<SAD-C004>`), `app.config.yaml` load failure blocks startup (`<SAD-I001>`, `<SAD-I002>`, code-gap row `<SAD-C002>`), header check per mode at session start (`<SAD-I001>`, `<SAD-I005>`, code-gap row `<SAD-C009>`). Affected: `<SRS-F004>`, `<SRS-F009>`, `<SRS-F033>`.
 - `00.06` (2026-10-10): verification findings D-15r, D-17 on SRS `00.07` — `<SAD-C001>` responsibilities now assign the session-start missing-header outcome (`--nogui` exit code 1, GUI message and `Stopped`); `<SAD-I001>` and `<SAD-Q008>` limit the stderr-only exception to `ledger.config.yaml` and place a missing `app.config.yaml` under stderr and log. Affected: `<SRS-F004>`, `<SRS-F033>`, `<SRS-N008>`.
+- `00.07` (2026-10-10): user decision on build assumption A3 on SRS `00.08` — `<SAD-C001>` and the session-stop sentence state that stable files already queued are all processed before a session ends; only candidates waiting for stabilization are dropped (`<SAD-C004>` unchanged). Affected: `<SRS-F009>`.
