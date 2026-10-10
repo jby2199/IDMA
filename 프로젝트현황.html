@@ -9,7 +9,7 @@
 {
  "code": "IDMA",
  "name": "입력문서관리기",
- "asof": "2026-10-10 20:59",
+ "asof": "2026-10-10 21:23",
  "note": "게이트는 기존 판정 기록, 재실행 X · 문서·이슈·사람할일 재집계",
  "up": "../프로젝트 전체현황.html",
  "stage": "시험",
@@ -279,6 +279,13 @@ function detailHtml(d,c){var h='<div class="detail" style="--c:'+c+'">'+(d.verdi
   return h+'</div>'}
 // 끝인데 비율도 근거도 없으면 정직하게 '모름'
 function fix(s){return (s.state==='O'&&s.n==null&&!s.basis)?'?':s.state}
+// 전체 진척 = 설계·구현·시험 단계 비율의 단순 평균(사용자 결정 2026-10-10). 끝=100%, 비율 없는 단계=0%. 단계가 해당없음이면 계산 안 함, 모름이 있으면 모름
+function overall(){var p=[],N=['설계','구현','시험'];
+  for(var i=0;i<N.length;i++){var s=D.stages.filter(function(x){return x.name===N[i]})[0];
+    if(!s||s.state==='-')return null;
+    if(fix(s)==='?')return {pct:null,unknown:N[i]};
+    p.push({name:N[i],r:s.state==='O'?1:(s.n!=null&&s.m?s.n/s.m:0)})}
+  return {pct:Math.floor(p.reduce(function(a,x){return a+x.r},0)/p.length*100),parts:p.map(function(x){return {name:x.name,pct:Math.floor(x.r*100)}})}}
 function render(){
   var k=D.todo.filter(function(t){return!t.done}).reduce(function(a,t){return a+t.count},0);
   var key=D.stages.filter(function(s){return s.name===(D.key||D.stage)})[0];
@@ -286,7 +293,10 @@ function render(){
   // 상단: 요약
   h+='<section class="card"><div class="head"><h1>'+esc(D.code)+'</h1><span class="nm">'+esc(D.name)+'</span>'+ageHtml(D.asof);
   h+='<span class="todo-n'+(k?'':' zero')+'">'+(k?'내 할 일 '+k+'건':'내 할 일 없음')+'</span></div>';
-  if(key&&key.n!=null)h+='<div class="big"><b>'+pct(key.n,key.m)+'%</b><span>'+esc(D.stage?D.stage+' 단계':D.key)+' · '+key.n+' / '+key.m+' 끝</span></div>'+gauge(key.n,key.m,key.state);
+  var ov=overall();
+  if(ov&&ov.pct==null)h+='<div class="big"><b>?</b><span>전체 진척 계산 불가 · '+esc(ov.unknown)+' 단계 모름</span></div>';
+  else if(ov)h+='<div class="big"><b>'+ov.pct+'%</b><span>전체 진척 · '+ov.parts.map(function(x){return x.name+' '+x.pct+'%'}).join(' · ')+' 평균'+(D.stage&&ov.pct<100?' · 지금 '+esc(D.stage)+' 단계':'')+'</span></div>'+gauge(ov.pct,100,ov.pct>=100?'O':'A');
+  else if(key&&key.n!=null&&key.m)h+='<div class="big"><b>'+pct(key.n,key.m)+'%</b><span>'+esc(D.stage?D.stage+' 단계':D.key)+' · '+key.n+' / '+key.m+' 끝</span></div>'+gauge(key.n,key.m,key.state);
   h+='<ul class="todo">';
   D.todo.forEach(function(t){h+='<li class="'+(t.done?'done':'')+'"><span class="mk"></span>'+lnk(t.link,t.text)+'<span class="cnt">'+t.count+'</span></li>'});
   h+='</ul>'+(D.todo.length?'<div class="todo who">사람할일/대기중 파일·이슈 폴더에서 자동 집계 · 커밋·세션 시작 때 갱신</div>':'')+'</section>';
