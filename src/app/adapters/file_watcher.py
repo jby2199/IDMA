@@ -110,6 +110,9 @@ class StableFileWatcher:
             return
         if not self._wait_until_stable(file_path):
             return
+        # 안정화가 끝난 직후 중지됐다면 서명을 기록하기 전에 버린다(재시작 때 다시 후보가 될 수 있게).
+        if self._stop_event.is_set():
+            return
 
         stat = file_path.stat()
         signature = (str(file_path.resolve()), stat.st_size, stat.st_mtime_ns)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import time
 from pathlib import Path
 
@@ -33,6 +34,43 @@ class OpenpyxlLedgerRepository:
         self._sheet_name = sheet_name
         self._business_columns = [c.strip() for c in business_columns if str(c).strip()]
         self._system_columns = [c.strip() for c in system_columns if str(c).strip()]
+
+    # 세션 시작 점검 1단계: 워크북이 다른 프로세스에 잠겼거나 쓰기 불가인지 본다.
+    def workbook_exists(self) -> bool:
+        """대장 워크북 파일이 이미 있는지 반환한다."""
+        return self._workbook_path.exists()
+
+    def check_writable(self) -> None:
+        """쓰기 모드 열기를 시도해 잠금·권한 문제를 OSError로 올린다(내용은 바꾸지 않는다)."""
+        with self._workbook_path.open("r+b"):
+            pass
+
+    # 세션 시작 점검 2단계: 워크북을 열기 전에 원본을 backup 폴더에 복사한다.
+    def backup(self, backup_dir: Path, run_id: str) -> Path:
+        """`<원본파일명(확장자 제외)>_<run_id><확장자>`로 복사하고 경로를 반환한다."""
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        target = backup_dir / f"{self._workbook_path.stem}_{run_id}{self._workbook_path.suffix}"
+        shutil.copy2(self._workbook_path, target)
+        return target
+
+    # 세션 시작 점검 3단계: 대상 시트 1행의 헤더 이름을 읽는다(워크북은 수정하지 않는다).
+    def read_headers(self) -> list[str]:
+        """대상 시트의 헤더 행 이름 목록을 반환한다. 시트가 없으면 빈 목록이다."""
+        openpyxl = _load_openpyxl_module()
+        wb = openpyxl.load_workbook(self._workbook_path, read_only=True)
+        try:
+            if self._sheet_name not in wb.sheetnames:
+                return []
+            ws = wb[self._sheet_name]
+            for row in ws.iter_rows(min_row=1, max_row=1, values_only=True):
+                return [str(value).strip() for value in row if value is not None and str(value).strip()]
+            return []
+        finally:
+            wb.close()
+
+    def required_headers(self) -> list[str]:
+        """기록에 쓰는 헤더 이름 목록을 반환한다."""
+        return self._required_headers()
 
     # 헤더 자동 보정 후 제출물 1건을 시트에 추가한다.
     def append_submission(self, record: LedgerRecord) -> None:

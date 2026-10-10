@@ -9,6 +9,16 @@ from app.models.config_schema import RuntimeConfig
 class PreflightValidator:
     """애플리케이션 시작 전 필수 조건을 검증한다."""
 
+    # 세션 시작 시 대장 시트 헤더에 필요한 이름이 모두 있는지 본다.
+    def check_ledger_headers(self, required: list[str], found: list[str]) -> list[ValidationIssue]:
+        """없는 헤더 이름마다 이슈 1건을 반환한다."""
+        present = set(found)
+        return [
+            ValidationIssue("ledger.header", f"Ledger header is missing: {name}")
+            for name in required
+            if name not in present
+        ]
+
     # 설정/지식/경로 검증 결과를 오류 목록으로 반환한다.
     def validate(self, cfg: RuntimeConfig, knowledge: Knowledge) -> list[ValidationIssue]:
         """실행 가능 여부를 검증하고 이슈 목록을 반환한다."""
